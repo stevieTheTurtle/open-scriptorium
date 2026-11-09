@@ -15,7 +15,7 @@ A LaTeX writing studio inside VS Code. Compile with [Tectonic](https://tectonic-
 
 **PDF preview**
 
-- Opens as a normal editor tab, so it can be split, moved and restored like any other.
+- Opens as a normal editor tab beside your source.
 - Keeps your reading position across recompiles, without flashing an empty page.
 - Follows VS Code's theme and works offline: PDF.js ships inside the extension.
 
