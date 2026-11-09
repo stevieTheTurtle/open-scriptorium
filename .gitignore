@@ -1,0 +1,6 @@
+node_modules/
+dist/
+out-e2e/
+*.vsix
+.e2e-run.json
+_Old/

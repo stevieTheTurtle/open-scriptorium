@@ -1,0 +1,108 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-foreground);
+  font: 12px var(--vscode-font-family);
+}
+
+#toolbar {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  background: var(--vscode-editorGroupHeader-tabsBackground);
+  border-bottom: 1px solid var(--vscode-editorGroupHeader-tabsBorder, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.group { display: flex; align-items: center; gap: 4px; }
+.group.end { margin-left: auto; min-width: 0; }
+
+button {
+  height: 22px;
+  min-width: 22px;
+  padding: 0 6px;
+  color: var(--vscode-foreground);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font: inherit;
+  cursor: pointer;
+}
+button:hover { background: var(--vscode-toolbar-hoverBackground); }
+button:focus-visible, input:focus-visible { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+
+input {
+  width: 42px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  text-align: right;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  font: inherit;
+  -moz-appearance: textfield;
+}
+input::-webkit-inner-spin-button { appearance: none; }
+
+#zoom { min-width: 40px; text-align: center; }
+#message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 8px;
+  color: var(--vscode-descriptionForeground);
+}
+
+#viewer {
+  position: absolute;
+  inset: 32px 0 0 0;
+  overflow: auto;
+  background: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+}
+
+#empty {
+  position: absolute;
+  inset: 32px 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--vscode-descriptionForeground);
+}
+#empty[hidden] { display: none; }
+
+.pdf-page {
+  position: relative;
+  margin: 8px auto;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.pdf-page canvas { display: block; }
+
+.synctex-highlight {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  box-sizing: border-box;
+  background: rgba(255, 200, 0, 0.35);
+  border-radius: 2px;
+  animation: synctex-fade 2.3s ease-out forwards;
+}
+
+@keyframes synctex-fade {
+  0%, 60% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .synctex-highlight { animation: none; }
+}

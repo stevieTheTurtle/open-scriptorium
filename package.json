@@ -1,0 +1,189 @@
+{
+  "name": "open-latex-studio",
+  "displayName": "Open LaTeX Studio",
+  "description": "LaTeX writing studio: compile with Tectonic, preview the PDF, jump between source and PDF.",
+  "version": "0.0.1",
+  "publisher": "open-latex-studio",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:latex",
+    "onLanguage:bibtex",
+    "workspaceContains:**/*.tex"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "PDFs can be viewed, but compiling needs a trusted workspace.",
+      "restrictedConfigurations": [
+        "openLatexStudio.tectonicPath",
+        "openLatexStudio.outDir",
+        "openLatexStudio.copyPdfTo"
+      ]
+    }
+  },
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "openLatexStudio.pdf",
+        "displayName": "Open LaTeX Studio PDF",
+        "selector": [
+          {
+            "filenamePattern": "*.pdf"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "commands": [
+      {
+        "command": "openLatexStudio.compile",
+        "title": "Compile",
+        "category": "Open LaTeX Studio",
+        "icon": "$(play)"
+      },
+      {
+        "command": "openLatexStudio.compileClean",
+        "title": "Clean and Compile",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.openPreview",
+        "title": "Open PDF Preview",
+        "category": "Open LaTeX Studio",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "openLatexStudio.syncToPdf",
+        "title": "Go to Location in PDF",
+        "category": "Open LaTeX Studio",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "openLatexStudio.syncToCode",
+        "title": "Go to Location in Source",
+        "category": "Open LaTeX Studio",
+        "icon": "$(arrow-left)"
+      },
+      {
+        "command": "openLatexStudio.showLog",
+        "title": "Show Compiler Log",
+        "category": "Open LaTeX Studio"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "openLatexStudio.compile",
+          "when": "editorLangId == latex",
+          "group": "navigation@1"
+        },
+        {
+          "command": "openLatexStudio.openPreview",
+          "when": "editorLangId == latex",
+          "group": "navigation@2"
+        },
+        {
+          "command": "openLatexStudio.syncToPdf",
+          "when": "editorLangId == latex",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "openLatexStudio.compile",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == latex || activeCustomEditorId == openLatexStudio.pdf"
+      },
+      {
+        "command": "openLatexStudio.syncToPdf",
+        "key": "ctrl+alt+right",
+        "mac": "cmd+alt+right",
+        "when": "editorTextFocus && editorLangId == latex"
+      },
+      {
+        "command": "openLatexStudio.syncToCode",
+        "key": "ctrl+alt+left",
+        "mac": "cmd+alt+left",
+        "when": "activeCustomEditorId == openLatexStudio.pdf"
+      }
+    ],
+    "configuration": {
+      "title": "Open LaTeX Studio",
+      "properties": {
+        "openLatexStudio.mainFile": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "markdownDescription": "Document to compile, relative to the workspace folder. Leave empty to use `% !TEX root`, the open document, or a search of the workspace."
+        },
+        "openLatexStudio.outDir": {
+          "type": "string",
+          "default": ".latex-studio/build",
+          "scope": "resource",
+          "markdownDescription": "Folder for the PDF and SyncTeX files, relative to the workspace folder."
+        },
+        "openLatexStudio.copyPdfTo": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "markdownDescription": "After a successful build, also copy the PDF to this path, relative to the workspace folder."
+        },
+        "openLatexStudio.tectonicPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Path to the Tectonic executable. Leave empty to find it on `PATH`."
+        },
+        "openLatexStudio.compile.trigger": {
+          "type": "string",
+          "enum": [
+            "save",
+            "typing",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Compile whenever a LaTeX file is saved.",
+            "Save and compile a moment after you stop typing.",
+            "Compile only on request."
+          ],
+          "default": "save",
+          "scope": "resource",
+          "markdownDescription": "When to compile automatically."
+        },
+        "openLatexStudio.compile.typingDelayMs": {
+          "type": "number",
+          "default": 2800,
+          "minimum": 500,
+          "scope": "resource",
+          "markdownDescription": "How long to wait after the last keystroke when `#openLatexStudio.compile.trigger#` is `typing`."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "build:modern": "node build.mjs modern",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts"
+  },
+  "dependencies": {
+    "pdfjs-dist": "6.5.438"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "1.99.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}
