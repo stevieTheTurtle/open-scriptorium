@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import { EditingFeatures } from './editing.ts';
 import { CONFIG_SECTION, ProjectResolver } from './project.ts';
 import { cleanWord, findWordNear } from './reveal.ts';
 import { CompileSession } from './session.ts';
@@ -15,6 +16,7 @@ export interface ExtensionApi {
   session: CompileSession;
   viewer: PdfViewer;
   projects: ProjectResolver;
+  editing: EditingFeatures;
   inverseSearch(uri: vscode.Uri, request: InverseSearchRequest): Promise<void>;
 }
 
@@ -22,6 +24,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const viewer = new PdfViewer(context.extensionUri);
   const projects = new ProjectResolver(context.workspaceState);
   const session = new CompileSession(projects, viewer);
+  const editing = new EditingFeatures(projects);
   const lineFlash = vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
     backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
@@ -131,6 +134,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 
   context.subscriptions.push(
     session,
+    editing,
     lineFlash,
     wordFlash,
     vscode.window.registerCustomEditorProvider(VIEW_TYPE, viewer),
@@ -153,7 +157,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     { dispose: () => clearTimeout(autoTimer) },
   );
 
-  return { session, viewer, projects, inverseSearch };
+  return { session, viewer, projects, editing, inverseSearch };
 }
 
 export function deactivate(): void {}

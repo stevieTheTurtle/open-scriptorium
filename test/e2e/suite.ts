@@ -210,6 +210,67 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
     await new Promise((resolve) => setTimeout(resolve, 500));
     assert.equal(api.viewer.info(pdf)!.loads, loads);
   });
+
+  const labelText = (item: vscode.CompletionItem) => (typeof item.label === 'string' ? item.label : item.label.label);
+
+  await step('completes citations, labels and environments', async () => {
+    const editor = await openAt(ch1, 'Closing paragraph');
+    const original = editor.document.getText();
+    const completeAfter = async (text: string) => {
+      await setText(editor.document, `${original}\n${text}`);
+      const position = editor.document.lineAt(editor.document.lineCount - 1).range.end;
+      const list = await vscode.commands.executeCommand<vscode.CompletionList>('vscode.executeCompletionItemProvider', ch1, position);
+      return list.items;
+    };
+    const citation = (await completeAfter('\\cite{do')).find((i) => labelText(i) === 'doe2020avatars');
+    assert.ok(citation, 'citation key missing');
+    const reference = (await completeAfter('\\ref{sec')).find((i) => labelText(i) === 'sec:intro');
+    assert.ok(reference, 'label missing');
+    const environment = (await completeAfter('\\begin{ite')).find((i) => labelText(i) === 'itemize');
+    assert.ok(environment, 'environment missing');
+    await setText(editor.document, original);
+    await editor.document.save();
+    return { citationDescription: typeof citation.label === 'string' ? null : citation.label.description };
+  });
+
+  await step('outlines the document', async () => {
+    const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>('vscode.executeDocumentSymbolProvider', main);
+    assert.deepEqual(symbols.map((s) => s.name), ['Introduction']);
+  });
+
+  await step('insert commands wrap the selection and add blocks', async () => {
+    const editor = await openAt(ch1, 'Closing paragraph');
+    const original = editor.document.getText();
+    const start = positionOf(editor.document, 'Closing');
+    editor.selection = new vscode.Selection(start, start.translate(0, 'Closing'.length));
+    await vscode.commands.executeCommand('openLatexStudio.insert.bold');
+    assert.ok(editor.document.getText().includes('\\textbf{Closing} paragraph'), editor.document.getText());
+    await setText(editor.document, original);
+
+    const math = positionOf(editor.document, 'Closing');
+    editor.selection = new vscode.Selection(math, math.translate(0, 'Closing'.length));
+    await vscode.commands.executeCommand('openLatexStudio.insert.math');
+    assert.ok(editor.document.getText().includes('$Closing$ paragraph'), editor.document.getText());
+    await setText(editor.document, original);
+
+    const end = editor.document.lineAt(editor.document.lineCount - 1).range.end;
+    editor.selection = new vscode.Selection(end, end);
+    await vscode.commands.executeCommand('openLatexStudio.insert.figure');
+    const text = editor.document.getText();
+    assert.ok(text.includes('\\begin{figure}[htbp]') && text.includes('\\includegraphics[width=0.85\\textwidth]{figures/sample.png}'), text);
+    await setText(editor.document, original);
+    await editor.document.save();
+  });
+
+  await step('counts words for the file and the document', async () => {
+    const editor = await openAt(ch1, 'Closing paragraph');
+    const report = (await api.editing.wordReport(editor.document))!;
+    assert.deepEqual(report.files.map((f) => f.relative), ['main.tex', 'ch1.tex']);
+    assert.ok(report.total.words > 20);
+    assert.equal(report.total.headings, 1);
+    const status = await waitFor('word count in the status bar', () => (api.editing.statusText.includes('words') ? api.editing.statusText : null));
+    return { total: report.total.words, status };
+  });
 }
 
 async function thesis(api: ExtensionApi, root: string, step: Step): Promise<void> {

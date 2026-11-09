@@ -77,10 +77,77 @@
         "command": "openLatexStudio.showLog",
         "title": "Show Compiler Log",
         "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.wordCount",
+        "title": "Word Count",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.bold",
+        "title": "Bold",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.italic",
+        "title": "Italic",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.math",
+        "title": "Inline Math",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.cite",
+        "title": "Citation",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.ref",
+        "title": "Cross-Reference",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.figure",
+        "title": "Figure",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.table",
+        "title": "Table",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.insert.itemize",
+        "title": "Bulleted List",
+        "category": "Open LaTeX Studio"
+      }
+    ],
+    "submenus": [
+      {
+        "id": "openLatexStudio.insertMenu",
+        "label": "Insert LaTeX",
+        "icon": "$(symbol-snippet)"
       }
     ],
     "menus": {
+      "openLatexStudio.insertMenu": [
+        { "command": "openLatexStudio.insert.bold", "group": "1_text@1" },
+        { "command": "openLatexStudio.insert.italic", "group": "1_text@2" },
+        { "command": "openLatexStudio.insert.math", "group": "1_text@3" },
+        { "command": "openLatexStudio.insert.cite", "group": "2_refs@1" },
+        { "command": "openLatexStudio.insert.ref", "group": "2_refs@2" },
+        { "command": "openLatexStudio.insert.figure", "group": "3_blocks@1" },
+        { "command": "openLatexStudio.insert.table", "group": "3_blocks@2" },
+        { "command": "openLatexStudio.insert.itemize", "group": "3_blocks@3" }
+      ],
       "editor/title": [
+        {
+          "submenu": "openLatexStudio.insertMenu",
+          "when": "editorLangId == latex",
+          "group": "navigation@4"
+        },
         {
           "command": "openLatexStudio.compile",
           "when": "editorLangId == latex",
@@ -99,6 +166,18 @@
       ]
     },
     "keybindings": [
+      {
+        "command": "openLatexStudio.insert.bold",
+        "key": "ctrl+b",
+        "mac": "cmd+b",
+        "when": "editorTextFocus && editorLangId == latex && config.openLatexStudio.formatKeybindings"
+      },
+      {
+        "command": "openLatexStudio.insert.italic",
+        "key": "ctrl+i",
+        "mac": "cmd+i",
+        "when": "editorTextFocus && editorLangId == latex && config.openLatexStudio.formatKeybindings"
+      },
       {
         "command": "openLatexStudio.compile",
         "key": "ctrl+enter",
@@ -121,6 +200,18 @@
     "configuration": {
       "title": "Open LaTeX Studio",
       "properties": {
+        "openLatexStudio.languageFeatures.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "markdownDescription": "Provide citation, reference and environment completion and the outline. Turn this off if another LaTeX extension already does."
+        },
+        "openLatexStudio.formatKeybindings": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Use `Ctrl+B` and `Ctrl+I` for bold and italic in LaTeX files. These replace the sidebar toggle and inline chat shortcuts while a LaTeX file has focus."
+        },
         "openLatexStudio.mainFile": {
           "type": "string",
           "default": "",
@@ -175,7 +266,7 @@
     "build": "node build.mjs",
     "build:modern": "node build.mjs modern",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts"
+    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/latex.test.ts"
   },
   "dependencies": {
     "pdfjs-dist": "6.5.438"
