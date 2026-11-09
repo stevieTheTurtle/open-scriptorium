@@ -6,6 +6,20 @@
   "publisher": "open-latex-studio",
   "private": true,
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stevieTheTurtle/open-latex-studio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stevieTheTurtle/open-latex-studio/issues"
+  },
+  "homepage": "https://github.com/stevieTheTurtle/open-latex-studio#readme",
+  "keywords": [
+    "latex",
+    "tectonic",
+    "synctex",
+    "pdf"
+  ],
   "engines": {
     "vscode": "^1.99.0"
   },
