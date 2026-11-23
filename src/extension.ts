@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import { CitationService } from './citationService.ts';
 import { EditingFeatures } from './editing.ts';
 import { CONFIG_SECTION, ProjectResolver } from './project.ts';
 import { cleanWord, findWordNear } from './reveal.ts';
 import { CompileSession } from './session.ts';
 import { loadSyncTex } from './synctex.ts';
-import { PdfViewer, VIEW_TYPE, type InverseSearchRequest } from './viewer.ts';
+import { PdfViewer, VIEW_TYPE, type InverseSearchRequest, type ResolveCiteFileRequest } from './viewer.ts';
 
 const SAVE_DEBOUNCE_MS = 300;
 const FLASH_MS = 1800;
@@ -25,6 +26,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const projects = new ProjectResolver(context.workspaceState);
   const session = new CompileSession(projects, viewer);
   const editing = new EditingFeatures(projects);
+  const citations = new CitationService();
   const lineFlash = vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
     backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
@@ -118,6 +120,33 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     if (!uri || !viewer.requestInverseSearch(uri)) status('open the PDF first');
   }
 
+  async function pushCitations(uri: vscode.Uri, runCommand: boolean) {
+    const project = (await projects.forPdf(uri)) ?? (await projects.resolve(undefined, false));
+    if (!project) return;
+    const data = await citations.load(project);
+    viewer.setCitations(uri, data);
+    if (runCommand) void citations.refreshStatus(project);
+  }
+
+  async function pushCitationsToAll(runCommand: boolean) {
+    for (const uri of viewer.openUris()) await pushCitations(uri, runCommand);
+  }
+
+  async function resolveCiteFile(uri: vscode.Uri, request: ResolveCiteFileRequest) {
+    const project = (await projects.forPdf(uri)) ?? (await projects.resolve(undefined, false));
+    const hit = project ? loadSyncTex(project.synctexPath, project.mainDir)?.edit(request.page, request.x, request.y) : null;
+    viewer.sendCiteFileResolved(uri, request.requestId, hit?.file ?? null);
+  }
+
+  async function refreshCitationStatus() {
+    const project = await projects.resolve(vscode.window.activeTextEditor?.document, true);
+    if (!project) return;
+    status('refreshing citation status…');
+    await citations.refreshStatus(project);
+    await pushCitationsToAll(false);
+    status('citation status updated');
+  }
+
   async function openPreview() {
     const project = await projects.resolve(vscode.window.activeTextEditor?.document, true);
     if (project) await viewer.open(vscode.Uri.file(project.pdfPath));
@@ -135,16 +164,27 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   context.subscriptions.push(
     session,
     editing,
+    citations,
     lineFlash,
     wordFlash,
     vscode.window.registerCustomEditorProvider(VIEW_TYPE, viewer),
     viewer.onInverseSearch(({ uri, request }) => void inverseSearch(uri, request)),
+    viewer.onReady((uri) => void pushCitations(uri, true)),
+    viewer.onResolveCiteFile(({ uri, request }) => void resolveCiteFile(uri, request)),
+    citations.onDidChange(() => void pushCitationsToAll(false)),
+    session.onDidFinish((finished) => {
+      if (finished.result.success) void pushCitationsToAll(true);
+    }),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration(`${CONFIG_SECTION}.citations`)) void pushCitationsToAll(false);
+    }),
     vscode.commands.registerCommand('openLatexStudio.compile', () => compile({})),
     vscode.commands.registerCommand('openLatexStudio.compileClean', () => compile({ clean: true })),
     vscode.commands.registerCommand('openLatexStudio.openPreview', openPreview),
     vscode.commands.registerCommand('openLatexStudio.syncToPdf', syncToPdf),
     vscode.commands.registerCommand('openLatexStudio.syncToCode', syncToCode),
     vscode.commands.registerCommand('openLatexStudio.showLog', () => session.showLog()),
+    vscode.commands.registerCommand('openLatexStudio.refreshCitationStatus', refreshCitationStatus),
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (session.savingForBuild || !LATEX_FILE.test(document.fileName) || trigger(document) !== 'save') return;
       scheduleBuild(document, SAVE_DEBOUNCE_MS);

@@ -2,7 +2,7 @@
   "name": "open-latex-studio",
   "displayName": "Open LaTeX Studio",
   "description": "LaTeX writing studio: compile with Tectonic, preview the PDF, jump between source and PDF.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "open-latex-studio",
   "private": true,
   "license": "MIT",
@@ -40,7 +40,8 @@
       "restrictedConfigurations": [
         "openLatexStudio.tectonicPath",
         "openLatexStudio.outDir",
-        "openLatexStudio.copyPdfTo"
+        "openLatexStudio.copyPdfTo",
+        "openLatexStudio.citations.statusCommand"
       ]
     }
   },
@@ -95,6 +96,11 @@
       {
         "command": "openLatexStudio.wordCount",
         "title": "Word Count",
+        "category": "Open LaTeX Studio"
+      },
+      {
+        "command": "openLatexStudio.refreshCitationStatus",
+        "title": "Refresh Citation Status",
         "category": "Open LaTeX Studio"
       },
       {
@@ -272,6 +278,24 @@
           "minimum": 500,
           "scope": "resource",
           "markdownDescription": "How long to wait after the last keystroke when `#openLatexStudio.compile.trigger#` is `typing`."
+        },
+        "openLatexStudio.citations.notesFile": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "markdownDescription": "Path to a citation evidence notes JSON file (e.g. `01_Thesis_meta/references.notes.json`), relative to the workspace folder. Sibling `<bib>.notes.json` files are also loaded automatically."
+        },
+        "openLatexStudio.citations.statusFile": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "markdownDescription": "Path to a citation status JSON file (defaults to `<outDir>/citation_status.json`), relative to the workspace folder."
+        },
+        "openLatexStudio.citations.statusCommand": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Optional shell command run in the background (in trusted workspaces) to refresh the citation status JSON file."
         }
       }
     }
@@ -280,7 +304,7 @@
     "build": "node build.mjs",
     "build:modern": "node build.mjs modern",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/latex.test.ts"
+    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/latex.test.ts test/unit/citations.test.ts"
   },
   "dependencies": {
     "pdfjs-dist": "6.5.438"

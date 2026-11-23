@@ -1,0 +1,11 @@
+﻿.git/**
+.gitignore
+src/**
+test/**
+scripts/**
+out-e2e/**
+node_modules/**
+build.mjs
+tsconfig.json
+package-lock.json
+*.vsix

@@ -5,6 +5,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PdfBox } from './synctex.ts';
+import type { CitationEntry } from './citations.ts';
 
 export const VIEW_TYPE = 'openLatexStudio.pdf';
 const WATCH_DEBOUNCE_MS = 200;
@@ -24,6 +25,13 @@ export interface InverseSearchRequest {
   y: number;
   word: string;
   context: string;
+}
+
+export interface ResolveCiteFileRequest {
+  requestId: number;
+  page: number;
+  x: number;
+  y: number;
 }
 
 export interface ViewerInfo {
@@ -52,6 +60,10 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
   private readonly busy = new Set<string>();
   private readonly inverseSearch = new vscode.EventEmitter<{ uri: vscode.Uri; request: InverseSearchRequest }>();
   readonly onInverseSearch = this.inverseSearch.event;
+  private readonly ready = new vscode.EventEmitter<vscode.Uri>();
+  readonly onReady = this.ready.event;
+  private readonly resolveCiteFile = new vscode.EventEmitter<{ uri: vscode.Uri; request: ResolveCiteFileRequest }>();
+  readonly onResolveCiteFile = this.resolveCiteFile.event;
 
   private readonly extensionUri: vscode.Uri;
 
@@ -150,6 +162,22 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
     return true;
   }
 
+  /** Sends citation metadata, notes, and status to an open PDF tab. */
+  setCitations(uri: vscode.Uri, citations: Record<string, CitationEntry>): void {
+    const entry = this.entries.get(uri.toString());
+    if (entry) void entry.panel.webview.postMessage({ type: 'citations', data: citations });
+  }
+
+  /** Replies to a webview request asking which .tex file owns a citation at (page, x, y). */
+  sendCiteFileResolved(uri: vscode.Uri, requestId: number, file: string | null): void {
+    const entry = this.entries.get(uri.toString());
+    if (entry) void entry.panel.webview.postMessage({ type: 'citeFileResolved', requestId, file });
+  }
+
+  openUris(): vscode.Uri[] {
+    return [...this.entries.values()].map((e) => e.uri);
+  }
+
   activeUri(): vscode.Uri | undefined {
     for (const entry of this.entries.values()) if (entry.panel.active) return entry.uri;
     return undefined;
@@ -194,6 +222,7 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
         entry.loaded = false;
         void this.sendPdf(entry, true);
         void entry.panel.webview.postMessage({ type: 'busy', busy: this.busy.has(entry.uri.toString()) });
+        this.ready.fire(entry.uri);
         break;
       case 'loaded':
         entry.loaded = true;
@@ -225,6 +254,12 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
         break;
       case 'compile':
         void vscode.commands.executeCommand('openLatexStudio.compile');
+        break;
+      case 'resolveCiteFile':
+        this.resolveCiteFile.fire({
+          uri: entry.uri,
+          request: { requestId: Number(message.requestId), page: Number(message.page), x: Number(message.x), y: Number(message.y) },
+        });
         break;
     }
   }

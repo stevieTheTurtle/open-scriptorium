@@ -39,10 +39,17 @@ export class ProjectResolver {
     return this.projectFor(mainFile, folder);
   }
 
-  /** The project a PDF belongs to, if it is the output of the current main file. */
+  /** The project a PDF belongs to, if it is the output (or copied output) of the current main file. */
   async forPdf(pdf: vscode.Uri): Promise<Project | undefined> {
     const project = await this.resolve(undefined, false);
-    return project && samePath(project.pdfPath, pdf.fsPath) ? project : undefined;
+    if (!project) return undefined;
+    if (samePath(project.pdfPath, pdf.fsPath)) return project;
+    const copyTo = vscode.workspace.getConfiguration(CONFIG_SECTION, project.folder?.uri).get<string>('copyPdfTo', '');
+    if (copyTo) {
+      const copyPath = path.isAbsolute(copyTo) ? copyTo : path.join(project.folder?.uri.fsPath ?? project.mainDir, copyTo);
+      if (samePath(copyPath, pdf.fsPath)) return project;
+    }
+    return undefined;
   }
 
   remember(project: Project): Thenable<void> {

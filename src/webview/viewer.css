@@ -87,10 +87,67 @@ input::-webkit-inner-spin-button { appearance: none; }
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 .pdf-page canvas { display: block; }
+.pdf-page .textLayer { z-index: 2; }
+
+/* Citations whose paper is not in the library index */
+.pdf-page .cite-unindexed {
+  position: absolute;
+  z-index: 1;
+  border-radius: 2px;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.pdf-page .cite-secondhand { background: rgba(250, 204, 21, 0.55); }
+.pdf-page .cite-unsourced { background: rgba(239, 68, 68, 0.5); }
+
+.cite-tip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 420px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  background: #1f2937;
+  color: #f3f4f6;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s ease;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.cite-tip.visible { opacity: 1; visibility: visible; pointer-events: auto; }
+.cite-tip ::selection { background: rgba(96, 165, 250, 0.55); color: #fff; }
+.cite-tip-title { font-weight: 600; font-size: 12.5px; color: #fff; }
+.cite-tip-meta { margin-top: 3px; color: #cbd5e1; }
+.cite-tip-venue { font-style: italic; color: #94a3b8; }
+.cite-tip-inside { margin-top: 4px; font-size: 11px; color: #93c5fd; }
+.cite-tip-quote {
+  margin: 7px 0 0;
+  padding: 5px 0 5px 9px;
+  border-left: 3px solid #f59e0b;
+  font-style: italic;
+  color: #e5e7eb;
+  max-height: 9.5em;
+  overflow-y: auto;
+}
+.cite-tip-src { margin-top: 3px; font-size: 11px; color: #94a3b8; }
+.cite-tip-warn {
+  margin-top: 6px;
+  padding: 4px 7px;
+  border-radius: 4px;
+  background: rgba(250, 204, 21, 0.18);
+  color: #fde047;
+  font-size: 11px;
+}
+.cite-tip-warn ul { margin: 3px 0 0; padding-left: 15px; }
+.cite-tip-warn-red { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
 .synctex-highlight {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   pointer-events: none;
   box-sizing: border-box;
   background: rgba(255, 200, 0, 0.35);

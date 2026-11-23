@@ -150,6 +150,7 @@ function applyScale() {
       p.canvas.style.width = p.div.style.width;
       p.canvas.style.height = p.div.style.height;
     }
+    p.div.querySelectorAll('.cite-unindexed').forEach((el) => el.remove());
     p.rendered = false;
   }
   dom.zoom.textContent = `${view.zoom}%`;
@@ -169,6 +170,7 @@ function renderVisiblePages() {
 function evictPage(p) {
   p.canvas?.remove();
   p.textDiv?.remove();
+  p.div?.querySelectorAll('.cite-unindexed').forEach((el) => el.remove());
   p.canvas = null;
   p.textDiv = null;
   p.rendered = false;
@@ -209,6 +211,9 @@ async function renderPage(p) {
     p.div.prepend(canvas);
     p.div.appendChild(textDiv);
     p.rendered = true;
+    void pageCiteLinks(p).then(() => {
+      if (generation === view.generation) paintCiteMarks(p);
+    });
   } catch (error) {
     if (error?.name !== 'RenderingCancelledException') console.warn('PDF page render failed', p.num, error);
   } finally {
@@ -362,12 +367,281 @@ async function reveal(request) {
   vscode.postMessage({ type: 'revealed', page: box.page });
 }
 
+// ---- Citation highlights & hover tooltips ---------------------------------------------------
+
+const cites = {
+  data: {},
+  tip: null,
+  showTimer: null,
+  hideTimer: null,
+  overTip: false,
+  current: null,
+  noteCache: new Map(),
+  pendingFileReq: new Map(),
+  nextReqId: 1,
+};
+
+function escapeHtml(text) {
+  return String(text ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function pageCiteLinks(p) {
+  if (p.citeLinks) return Promise.resolve(p.citeLinks);
+  if (!p.citeLinksPromise) {
+    p.citeLinksPromise = p.page
+      .getAnnotations({ intent: 'display' })
+      .then((annots) => {
+        p.citeLinks = annots
+          .filter((a) => a.subtype === 'Link' && typeof a.dest === 'string' && a.dest.startsWith('cite.'))
+          .map((a) => ({ key: a.dest.slice(5), rect: a.rect }));
+        return p.citeLinks;
+      })
+      .catch(() => (p.citeLinks = []));
+  }
+  return p.citeLinksPromise;
+}
+
+// Highlight boxes over citations whose paper is not in the library index.
+// Yellow: second-hand (other papers in the library cite it). Red: no trace in the library.
+function paintCiteMarks(p) {
+  if (!p.rendered || !p.citeLinks || !p.div) return;
+  p.div.querySelectorAll('.cite-unindexed').forEach((el) => el.remove());
+  const vp = p.page.getViewport({ scale: view.scale });
+  for (const link of p.citeLinks) {
+    const entry = cites.data[link.key];
+    if (!entry || entry.indexed !== false || !entry.citedIn) continue;
+    const [x1, y1, x2, y2] = vp.convertToViewportRectangle(link.rect);
+    const el = document.createElement('div');
+    el.className = `cite-unindexed ${entry.citedIn.count > 0 ? 'cite-secondhand' : 'cite-unsourced'}`;
+    el.style.left = `${Math.min(x1, x2)}px`;
+    el.style.top = `${Math.min(y1, y2)}px`;
+    el.style.width = `${Math.abs(x2 - x1)}px`;
+    el.style.height = `${Math.abs(y2 - y1)}px`;
+    p.div.appendChild(el);
+  }
+}
+
+function repaintAllCiteMarks() {
+  for (const p of view.pages) {
+    if (p.rendered) void pageCiteLinks(p).then(() => paintCiteMarks(p));
+  }
+}
+
+function citeLinkAt(event) {
+  const pageDiv = event.target?.closest?.('.pdf-page');
+  if (!pageDiv) return null;
+  const p = view.pages[Number(pageDiv.dataset.page) - 1];
+  if (!p || !p.citeLinks) {
+    if (p) void pageCiteLinks(p);
+    return null;
+  }
+  const rect = pageDiv.getBoundingClientRect();
+  const vp = p.page.getViewport({ scale: view.scale });
+  const [px, py] = vp.convertToPdfPoint(event.clientX - rect.left, event.clientY - rect.top);
+  const link = p.citeLinks.find((l) => px >= l.rect[0] && px <= l.rect[2] && py >= l.rect[1] && py <= l.rect[3]);
+  if (!link) return null;
+  const [x1, y1, x2, y2] = vp.convertToViewportRectangle(link.rect);
+  return {
+    p,
+    link,
+    box: {
+      left: rect.left + Math.min(x1, x2),
+      right: rect.left + Math.max(x1, x2),
+      top: rect.top + Math.min(y1, y2),
+      bottom: rect.top + Math.max(y1, y2),
+    },
+    sx: (event.clientX - rect.left) / view.scale,
+    sy: (event.clientY - rect.top) / view.scale,
+  };
+}
+
+function resolveCiteSourceFile(page, x, y) {
+  return new Promise((resolve) => {
+    const requestId = cites.nextReqId++;
+    const timer = setTimeout(() => {
+      cites.pendingFileReq.delete(requestId);
+      resolve(null);
+    }, 1500);
+    cites.pendingFileReq.set(requestId, (file) => {
+      clearTimeout(timer);
+      resolve(file);
+    });
+    vscode.postMessage({ type: 'resolveCiteFile', requestId, page, x, y });
+  });
+}
+
+async function pickCiteNote(hit, entry) {
+  const notes = entry.notes || [];
+  if (notes.length <= 1) return notes[0] || null;
+  const cacheKey = `${hit.p.num}:${hit.link.rect.join(',')}`;
+  if (cites.noteCache.has(cacheKey)) return cites.noteCache.get(cacheKey);
+  let pick = notes[0];
+  const file = await resolveCiteSourceFile(hit.p.num, hit.sx, hit.sy);
+  if (file) pick = notes.find((n) => n.file === file) || pick;
+  cites.noteCache.set(cacheKey, pick);
+  return pick;
+}
+
+function formatAuthors(bibAuthors) {
+  const names = (bibAuthors || '')
+    .split(/\s+and\s+/)
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .map((n) => (n.includes(',') ? `${n.split(',').slice(1).join(' ').trim()} ${n.split(',')[0].trim()}` : n));
+  if (names.length > 4) return `${names.slice(0, 3).join(', ')} et al.`;
+  return names.join(', ');
+}
+
+function citeProvenanceHtml(citedIn) {
+  if (!citedIn.count) {
+    return '<div class="cite-tip-warn cite-tip-warn-red">This paper is not in Zotero, and no paper in your library cites it: verify that it exists</div>';
+  }
+  const rows = (citedIn.papers || [])
+    .map((paper) => {
+      const page = paper.page ? ` (p. ${escapeHtml(String(paper.page))})` : '';
+      return `<li>${escapeHtml(paper.title)}${page}</li>`;
+    })
+    .join('');
+  const more = citedIn.count > (citedIn.papers?.length ?? 0) ? `<div>and ${citedIn.count - citedIn.papers.length} more</div>` : '';
+  return `<div class="cite-tip-warn">This paper is not in Zotero. Second-hand: it is cited by these papers in your library<ul>${rows}</ul>${more}</div>`;
+}
+
+function scheduleHideCiteTip() {
+  if (cites.hideTimer || cites.overTip) return;
+  cites.hideTimer = setTimeout(hideCiteTip, 350);
+}
+
+function cancelHideCiteTip() {
+  clearTimeout(cites.hideTimer);
+  cites.hideTimer = null;
+}
+
+function hideCiteTip() {
+  cancelHideCiteTip();
+  cites.overTip = false;
+  clearTimeout(cites.showTimer);
+  cites.current = null;
+  if (cites.tip) cites.tip.classList.remove('visible');
+  if (dom.viewer.dataset.title) {
+    dom.viewer.title = dom.viewer.dataset.title;
+    delete dom.viewer.dataset.title;
+  }
+}
+
+async function showCiteTip(hit) {
+  const entry = cites.data[hit.link.key];
+  const tip = cites.tip;
+  let html;
+  if (!entry) {
+    html = `<div class="cite-tip-title">${escapeHtml(hit.link.key)}</div><div class="cite-tip-meta">Not found in the .bib files</div>`;
+  } else {
+    const note = await pickCiteNote(hit, entry);
+    if (cites.current !== hit.link) return;
+    const meta = [formatAuthors(entry.authors), entry.year].filter(Boolean).join(' · ');
+    html =
+      `<div class="cite-tip-title">${escapeHtml(entry.title || hit.link.key)}</div>` +
+      `<div class="cite-tip-meta">${escapeHtml(meta)}${entry.venue ? `<br><span class="cite-tip-venue">${escapeHtml(entry.venue)}</span>` : ''}</div>`;
+    if (entry.inside?.title) {
+      const pg = entry.inside.page ? ` (p. ${escapeHtml(String(entry.inside.page))})` : '';
+      html += `<div class="cite-tip-inside">In library inside: ${escapeHtml(entry.inside.title)}${pg}</div>`;
+    }
+    if (entry.indexed === false && entry.citedIn) {
+      html += citeProvenanceHtml(entry.citedIn);
+    }
+    if (note) {
+      const more = entry.notes.length > 1 ? ` · ${entry.notes.length} notes` : '';
+      html +=
+        `<blockquote class="cite-tip-quote">“${escapeHtml(note.quote)}”</blockquote>` +
+        `<div class="cite-tip-src">${note.page ? `p. ${escapeHtml(String(note.page))}` : ''}${more}</div>`;
+    }
+  }
+  tip.innerHTML = html;
+  tip.style.left = '0px';
+  tip.style.top = '0px';
+  tip.classList.add('visible');
+  const w = tip.offsetWidth;
+  const h = tip.offsetHeight;
+  const left = Math.min(Math.max(8, hit.box.left), window.innerWidth - w - 8);
+  let top = hit.box.bottom + 6;
+  if (top + h > window.innerHeight - 8) top = Math.max(8, hit.box.top - h - 6);
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
+}
+
+function setupCitationTooltips() {
+  cites.tip = document.createElement('div');
+  cites.tip.className = 'cite-tip';
+  document.body.appendChild(cites.tip);
+
+  cites.tip.addEventListener('mouseenter', () => {
+    cites.overTip = true;
+    cancelHideCiteTip();
+  });
+  cites.tip.addEventListener('mouseleave', (e) => {
+    if (e.buttons & 1) {
+      document.addEventListener(
+        'mouseup',
+        () => {
+          if (cites.tip.matches(':hover')) return;
+          cites.overTip = false;
+          scheduleHideCiteTip();
+        },
+        { once: true },
+      );
+      return;
+    }
+    cites.overTip = false;
+    scheduleHideCiteTip();
+  });
+
+  let raf = 0;
+  let lastEvt = null;
+  dom.viewer.addEventListener('mousemove', (e) => {
+    lastEvt = e;
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      const hit = citeLinkAt(lastEvt);
+      if (!hit) {
+        if (!cites.current) return;
+        if (cites.tip.classList.contains('visible')) scheduleHideCiteTip();
+        else hideCiteTip();
+        return;
+      }
+      if (cites.current === hit.link) {
+        cancelHideCiteTip();
+        return;
+      }
+      hideCiteTip();
+      cites.current = hit.link;
+      if (dom.viewer.title) {
+        dom.viewer.dataset.title = dom.viewer.title;
+        dom.viewer.title = '';
+      }
+      cites.showTimer = setTimeout(() => void showCiteTip(hit), 250);
+    });
+  });
+
+  dom.viewer.addEventListener('mouseleave', () => {
+    if (cites.tip.classList.contains('visible')) scheduleHideCiteTip();
+    else hideCiteTip();
+  });
+}
+
+setupCitationTooltips();
+
 // ---- Events ---------------------------------------------------------------------------------
 
 let scrollTimer;
 dom.viewer.addEventListener(
   'scroll',
   () => {
+    if (!cites.overTip) hideCiteTip();
     updatePageIndicator();
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
@@ -444,6 +718,19 @@ window.addEventListener('message', (event) => {
     case 'busy':
       setMessage(message.busy ? 'Compiling…' : '');
       break;
+    case 'citations':
+      cites.data = message.data || {};
+      cites.noteCache.clear();
+      repaintAllCiteMarks();
+      break;
+    case 'citeFileResolved': {
+      const done = cites.pendingFileReq.get(message.requestId);
+      if (done) {
+        cites.pendingFileReq.delete(message.requestId);
+        done(message.file ?? null);
+      }
+      break;
+    }
   }
 });
 
