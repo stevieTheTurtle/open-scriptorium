@@ -390,6 +390,16 @@ function escapeHtml(text) {
     .replaceAll("'", '&#39;');
 }
 
+function rectToViewport(vp, rect) {
+  const [x1, y1] = vp.convertToViewportPoint(rect[0], rect[1]);
+  const [x2, y2] = vp.convertToViewportPoint(rect[2], rect[3]);
+  const left = Math.min(x1, x2);
+  const top = Math.min(y1, y2);
+  const right = Math.max(x1, x2);
+  const bottom = Math.max(y1, y2);
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+}
+
 function pageCiteLinks(p) {
   if (p.citeLinks) return Promise.resolve(p.citeLinks);
   if (!p.citeLinksPromise) {
@@ -397,8 +407,16 @@ function pageCiteLinks(p) {
       .getAnnotations({ intent: 'display' })
       .then((annots) => {
         p.citeLinks = annots
-          .filter((a) => a.subtype === 'Link' && typeof a.dest === 'string' && a.dest.startsWith('cite.'))
-          .map((a) => ({ key: a.dest.slice(5), rect: a.rect }));
+          .filter((a) => a.subtype === 'Link' && typeof a.dest === 'string' && a.dest.startsWith('cite.') && Array.isArray(a.rect) && a.rect.length === 4)
+          .map((a) => ({
+            key: a.dest.slice(5),
+            rect: [
+              Math.min(a.rect[0], a.rect[2]),
+              Math.min(a.rect[1], a.rect[3]),
+              Math.max(a.rect[0], a.rect[2]),
+              Math.max(a.rect[1], a.rect[3]),
+            ],
+          }));
         return p.citeLinks;
       })
       .catch(() => (p.citeLinks = []));
@@ -415,13 +433,13 @@ function paintCiteMarks(p) {
   for (const link of p.citeLinks) {
     const entry = cites.data[link.key];
     if (!entry || entry.indexed !== false || !entry.citedIn) continue;
-    const [x1, y1, x2, y2] = vp.convertToViewportRectangle(link.rect);
+    const box = rectToViewport(vp, link.rect);
     const el = document.createElement('div');
     el.className = `cite-unindexed ${entry.citedIn.count > 0 ? 'cite-secondhand' : 'cite-unsourced'}`;
-    el.style.left = `${Math.min(x1, x2)}px`;
-    el.style.top = `${Math.min(y1, y2)}px`;
-    el.style.width = `${Math.abs(x2 - x1)}px`;
-    el.style.height = `${Math.abs(y2 - y1)}px`;
+    el.style.left = `${box.left}px`;
+    el.style.top = `${box.top}px`;
+    el.style.width = `${box.width}px`;
+    el.style.height = `${box.height}px`;
     p.div.appendChild(el);
   }
 }
@@ -445,15 +463,15 @@ function citeLinkAt(event) {
   const [px, py] = vp.convertToPdfPoint(event.clientX - rect.left, event.clientY - rect.top);
   const link = p.citeLinks.find((l) => px >= l.rect[0] && px <= l.rect[2] && py >= l.rect[1] && py <= l.rect[3]);
   if (!link) return null;
-  const [x1, y1, x2, y2] = vp.convertToViewportRectangle(link.rect);
+  const vpBox = rectToViewport(vp, link.rect);
   return {
     p,
     link,
     box: {
-      left: rect.left + Math.min(x1, x2),
-      right: rect.left + Math.max(x1, x2),
-      top: rect.top + Math.min(y1, y2),
-      bottom: rect.top + Math.max(y1, y2),
+      left: rect.left + vpBox.left,
+      right: rect.left + vpBox.right,
+      top: rect.top + vpBox.top,
+      bottom: rect.top + vpBox.bottom,
     },
     sx: (event.clientX - rect.left) / view.scale,
     sy: (event.clientY - rect.top) / view.scale,

@@ -2,7 +2,7 @@
   "name": "open-latex-studio",
   "displayName": "Open LaTeX Studio",
   "description": "LaTeX writing studio: compile with Tectonic, preview the PDF, jump between source and PDF.",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "open-latex-studio",
   "private": true,
   "license": "MIT",
