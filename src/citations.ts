@@ -13,6 +13,8 @@ export interface CitationNote {
 export interface CitationPaperRef {
   title: string;
   page?: number | string;
+  quote?: string;
+  quotePage?: number | string;
 }
 
 export interface CitationProvenance {
@@ -44,6 +46,9 @@ function asPaperRef(raw: unknown): CitationPaperRef | null {
   if (typeof obj.title !== 'string' || !obj.title.trim()) return null;
   const ref: CitationPaperRef = { title: obj.title };
   if (typeof obj.page === 'number' || typeof obj.page === 'string') ref.page = obj.page;
+  if (typeof obj.quote === 'string' && obj.quote.trim()) ref.quote = obj.quote;
+  const quotePage = obj.quotePage ?? obj.quote_page;
+  if (typeof quotePage === 'number' || typeof quotePage === 'string') ref.quotePage = quotePage;
   return ref;
 }
 

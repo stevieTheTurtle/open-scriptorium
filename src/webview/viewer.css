@@ -143,6 +143,16 @@ input::-webkit-inner-spin-button { appearance: none; }
   font-size: 11px;
 }
 .cite-tip-warn ul { margin: 3px 0 0; padding-left: 15px; }
+.cite-tip-warn li + li { margin-top: 5px; }
+.cite-tip-cite-quote {
+  margin: 3px 0 2px;
+  padding: 2px 0 2px 7px;
+  border-left: 2px solid rgba(250, 204, 21, 0.7);
+  font-style: italic;
+  color: #fef3c7;
+  max-height: 5.5em;
+  overflow-y: auto;
+}
 .cite-tip-warn-red { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
 
 .synctex-highlight {

@@ -23,7 +23,11 @@ test('status: parses version 1 citation_status.json and snake_case fallback', ()
       version: 1,
       citations: {
         ok: { indexed: true, citedIn: null, inside: null },
-        secondhand: { indexed: false, citedIn: { count: 2, papers: [{ title: 'Paper A', page: 5 }] }, inside: null },
+        secondhand: {
+          indexed: false,
+          citedIn: { count: 2, papers: [{ title: 'Paper A', page: 10, quote: 'As shown in [26], mind has two dimensions.', quotePage: 3 }] },
+          inside: null,
+        },
         unsourced: { indexed: false, cited_in: { count: 0, papers: [] } },
         inBook: { indexed: true, citedIn: null, inside: { title: 'Handbook', page: 42 } },
       },
@@ -33,6 +37,8 @@ test('status: parses version 1 citation_status.json and snake_case fallback', ()
   assert.equal(status.get('secondhand')?.indexed, false);
   assert.equal(status.get('secondhand')?.citedIn?.count, 2);
   assert.equal(status.get('secondhand')?.citedIn?.papers[0].title, 'Paper A');
+  assert.equal(status.get('secondhand')?.citedIn?.papers[0].quote, 'As shown in [26], mind has two dimensions.');
+  assert.equal(status.get('secondhand')?.citedIn?.papers[0].quotePage, 3);
   assert.equal(status.get('unsourced')?.citedIn?.count, 0);
   assert.deepEqual(status.get('inBook')?.inside, { title: 'Handbook', page: 42 });
 });

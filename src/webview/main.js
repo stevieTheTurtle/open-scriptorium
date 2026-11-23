@@ -521,8 +521,15 @@ function citeProvenanceHtml(citedIn) {
   }
   const rows = (citedIn.papers || [])
     .map((paper) => {
-      const page = paper.page ? ` (p. ${escapeHtml(String(paper.page))})` : '';
-      return `<li>${escapeHtml(paper.title)}${page}</li>`;
+      const qPage = paper.quotePage ?? paper.quote_page;
+      const loc =
+        qPage && qPage !== paper.page
+          ? ` (cited p. ${escapeHtml(String(qPage))}${paper.page ? `, ref. p. ${escapeHtml(String(paper.page))}` : ''})`
+          : paper.page
+            ? ` (p. ${escapeHtml(String(paper.page))})`
+            : '';
+      const quote = paper.quote ? `<blockquote class="cite-tip-cite-quote">“${escapeHtml(paper.quote)}”</blockquote>` : '';
+      return `<li>${escapeHtml(paper.title)}${loc}${quote}</li>`;
     })
     .join('');
   const more = citedIn.count > (citedIn.papers?.length ?? 0) ? `<div>and ${citedIn.count - citedIn.papers.length} more</div>` : '';
