@@ -8,6 +8,7 @@ import * as path from 'node:path';
 import { parseBib, type BibFields } from './bib.ts';
 import { mergeCitations, parseNotesFile, parseStatusFile, type CitationEntry, type CitationNote, type CitationStatus } from './citations.ts';
 import { CONFIG_SECTION, type Project } from './project.ts';
+import type { ResearchAssistantService } from './researchAssistant.ts';
 
 const EXCLUDED = '**/{node_modules,.git,_Old,.latex-studio}/**';
 const WATCH_DEBOUNCE_MS = 200;
@@ -30,11 +31,16 @@ export class CitationService implements vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<void>();
   readonly onDidChange = this.changed.event;
 
+  private readonly researchAssistant: ResearchAssistantService | undefined;
   private watchers: vscode.Disposable[] = [];
   private watchedKey = '';
   private debounce: NodeJS.Timeout | undefined;
   private runningCommand: Promise<void> | undefined;
   private pendingRefresh = false;
+
+  constructor(researchAssistant?: ResearchAssistantService) {
+    this.researchAssistant = researchAssistant;
+  }
 
   dispose(): void {
     clearTimeout(this.debounce);
@@ -85,11 +91,15 @@ export class CitationService implements vscode.Disposable {
     return mergeCitations(bib, notes, status);
   }
 
-  /** Runs the configured status refresh command in the background (single-flight, trusted workspaces only). */
+  /** Runs the configured status refresh command, or the bundled Research Assistant bridge, in the background. */
   refreshStatus(project: Project): Promise<void> {
     if (!vscode.workspace.isTrusted) return Promise.resolve();
-    const command = vscode.workspace.getConfiguration(CONFIG_SECTION, project.folder?.uri).get<string>('citations.statusCommand', '').trim();
-    if (!command) return Promise.resolve();
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION, project.folder?.uri);
+    const command = config.get<string>('citations.statusCommand', '').trim();
+    const statusSetting = config.get<string>('citations.statusFile', '');
+    const statusPath = resolveWorkspacePath(statusSetting, project) ?? path.join(project.outDir, 'citation_status.json');
+    const builtIn = !command ? this.researchAssistant?.getBuiltInCitationStatusRunner() ?? null : null;
+    if (!command && !builtIn) return Promise.resolve();
 
     if (this.runningCommand) {
       this.pendingRefresh = true;
@@ -98,7 +108,13 @@ export class CitationService implements vscode.Disposable {
 
     const cwd = project.folder?.uri.fsPath ?? project.mainDir;
     this.runningCommand = new Promise<void>((resolve) => {
-      const child = spawn(command, { cwd, shell: true, windowsHide: true });
+      const child = command
+        ? spawn(command, { cwd, shell: true, windowsHide: true })
+        : spawn(
+            builtIn!.python,
+            [builtIn!.script, '--bib-dir', project.mainDir, '--db', builtIn!.dbPath, '--output', statusPath],
+            { cwd, windowsHide: true },
+          );
       child.on('error', () => resolve());
       child.on('close', (code) => {
         if (code === 0) this.scheduleChanged();

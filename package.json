@@ -1,9 +1,10 @@
 {
   "name": "open-latex-studio",
   "displayName": "Open LaTeX Studio",
-  "description": "LaTeX writing studio: compile with Tectonic, preview the PDF, jump between source and PDF.",
-  "version": "0.0.4",
+  "description": "LaTeX writing studio: compile with Tectonic, preview the PDF, jump between source and PDF, and verify citations with bundled Research Assistant MCP.",
+  "version": "0.1.0",
   "publisher": "open-latex-studio",
+  "icon": "assets/icon.png",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -31,21 +32,37 @@
   "activationEvents": [
     "onLanguage:latex",
     "onLanguage:bibtex",
-    "workspaceContains:**/*.tex"
+    "workspaceContains:**/*.tex",
+    "onCommand:openLatexStudio.researchAssistant.setup",
+    "onCommand:openLatexStudio.researchAssistant.status",
+    "onCommand:openLatexStudio.researchAssistant.syncZotero",
+    "onCommand:openLatexStudio.researchAssistant.openWebUi",
+    "onCommand:openLatexStudio.researchAssistant.registerClients",
+    "onCommand:openLatexStudio.researchAssistant.installWorkspaceSkill"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "PDFs can be viewed, but compiling needs a trusted workspace.",
+      "description": "PDFs can be viewed, but compiling and Research Assistant scripts need a trusted workspace.",
       "restrictedConfigurations": [
         "openLatexStudio.tectonicPath",
         "openLatexStudio.outDir",
         "openLatexStudio.copyPdfTo",
-        "openLatexStudio.citations.statusCommand"
+        "openLatexStudio.citations.statusCommand",
+        "openLatexStudio.researchAssistant.installDir",
+        "openLatexStudio.researchAssistant.pythonPath",
+        "openLatexStudio.researchAssistant.dataDir",
+        "openLatexStudio.researchAssistant.zoteroDir"
       ]
     }
   },
   "contributes": {
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "openLatexStudio.researchAssistant",
+        "label": "Open LaTeX Studio — Research Assistant"
+      }
+    ],
     "customEditors": [
       {
         "viewType": "openLatexStudio.pdf",
@@ -68,7 +85,8 @@
       {
         "command": "openLatexStudio.compileClean",
         "title": "Clean and Compile",
-        "category": "Open LaTeX Studio"
+        "category": "Open LaTeX Studio",
+        "icon": "$(clear-all)"
       },
       {
         "command": "openLatexStudio.openPreview",
@@ -91,17 +109,56 @@
       {
         "command": "openLatexStudio.showLog",
         "title": "Show Compiler Log",
-        "category": "Open LaTeX Studio"
+        "category": "Open LaTeX Studio",
+        "icon": "$(output)"
       },
       {
         "command": "openLatexStudio.wordCount",
         "title": "Word Count",
-        "category": "Open LaTeX Studio"
+        "category": "Open LaTeX Studio",
+        "icon": "$(symbol-numeric)"
       },
       {
         "command": "openLatexStudio.refreshCitationStatus",
         "title": "Refresh Citation Status",
-        "category": "Open LaTeX Studio"
+        "category": "Open LaTeX Studio",
+        "icon": "$(verified)"
+      },
+      {
+        "command": "openLatexStudio.researchAssistant.setup",
+        "title": "Research Assistant: Set Up / Configure",
+        "category": "Open LaTeX Studio",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "openLatexStudio.researchAssistant.status",
+        "title": "Research Assistant: Status & Actions",
+        "category": "Open LaTeX Studio",
+        "icon": "$(library)"
+      },
+      {
+        "command": "openLatexStudio.researchAssistant.syncZotero",
+        "title": "Research Assistant: Sync Zotero Library",
+        "category": "Open LaTeX Studio",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "openLatexStudio.researchAssistant.openWebUi",
+        "title": "Research Assistant: Open Web UI",
+        "category": "Open LaTeX Studio",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "openLatexStudio.researchAssistant.registerClients",
+        "title": "Research Assistant: Register MCP & Skills",
+        "category": "Open LaTeX Studio",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "openLatexStudio.researchAssistant.installWorkspaceSkill",
+        "title": "Research Assistant: Install Citation Rules in Workspace",
+        "category": "Open LaTeX Studio",
+        "icon": "$(file-add)"
       },
       {
         "command": "openLatexStudio.insert.bold",
@@ -149,6 +206,11 @@
         "id": "openLatexStudio.insertMenu",
         "label": "Insert LaTeX",
         "icon": "$(symbol-snippet)"
+      },
+      {
+        "id": "openLatexStudio.researchMenu",
+        "label": "Research Assistant",
+        "icon": "$(library)"
       }
     ],
     "menus": {
@@ -162,11 +224,25 @@
         { "command": "openLatexStudio.insert.table", "group": "3_blocks@2" },
         { "command": "openLatexStudio.insert.itemize", "group": "3_blocks@3" }
       ],
+      "openLatexStudio.researchMenu": [
+        { "command": "openLatexStudio.researchAssistant.status", "group": "1_status@1" },
+        { "command": "openLatexStudio.researchAssistant.syncZotero", "group": "2_actions@1" },
+        { "command": "openLatexStudio.refreshCitationStatus", "group": "2_actions@2" },
+        { "command": "openLatexStudio.researchAssistant.openWebUi", "group": "2_actions@3" },
+        { "command": "openLatexStudio.researchAssistant.setup", "group": "3_setup@1" },
+        { "command": "openLatexStudio.researchAssistant.registerClients", "group": "3_setup@2" },
+        { "command": "openLatexStudio.researchAssistant.installWorkspaceSkill", "group": "3_setup@3" }
+      ],
       "editor/title": [
         {
           "submenu": "openLatexStudio.insertMenu",
           "when": "editorLangId == latex",
           "group": "navigation@4"
+        },
+        {
+          "submenu": "openLatexStudio.researchMenu",
+          "when": "editorLangId == latex",
+          "group": "navigation@5"
         },
         {
           "command": "openLatexStudio.compile",
@@ -295,7 +371,58 @@
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "markdownDescription": "Optional shell command run in the background (in trusted workspaces) to refresh the citation status JSON file."
+          "markdownDescription": "Optional custom shell command run in the background (in trusted workspaces) to refresh the citation status JSON file. Leave empty to use the bundled Research Assistant bridge automatically."
+        },
+        "openLatexStudio.researchAssistant.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Enable the bundled Research Assistant citation status checker, MCP provider, and Zotero sync."
+        },
+        "openLatexStudio.researchAssistant.installDir": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Stable directory for the Research Assistant Python source, `.venv`, and `config.yaml`. Leave empty to use `~/.open-latex-studio/research-assistant`."
+        },
+        "openLatexStudio.researchAssistant.pythonPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Optional Python 3.10+ executable override used for citation checks and initial setup."
+        },
+        "openLatexStudio.researchAssistant.dataDir": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Directory containing Research Assistant's `collections/` and `metadata.db` (e.g. a OneDrive-synced folder). Leave empty to auto-detect or use `<installDir>/data`."
+        },
+        "openLatexStudio.researchAssistant.collection": {
+          "type": "string",
+          "default": "Zotero",
+          "scope": "resource",
+          "markdownDescription": "Research Assistant collection name used for citation verification and Zotero sync."
+        },
+        "openLatexStudio.researchAssistant.zoteroDir": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "Path to the Zotero data folder containing `zotero.sqlite`. Leave empty to auto-detect."
+        },
+        "openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "scope": "window",
+          "markdownDescription": "If greater than 0, automatically runs incremental Zotero sync in the background every N minutes (e.g. `30`)."
+        },
+        "openLatexStudio.researchAssistant.webUiPort": {
+          "type": "number",
+          "default": 8000,
+          "minimum": 1024,
+          "maximum": 65535,
+          "scope": "window",
+          "markdownDescription": "Local port for the Research Assistant Web UI."
         }
       }
     }
@@ -304,7 +431,7 @@
     "build": "node build.mjs",
     "build:modern": "node build.mjs modern",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/latex.test.ts test/unit/citations.test.ts"
+    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/latex.test.ts test/unit/citations.test.ts test/unit/researchAssistant.test.ts"
   },
   "dependencies": {
     "pdfjs-dist": "6.5.438"

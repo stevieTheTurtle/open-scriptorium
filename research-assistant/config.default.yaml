@@ -1,0 +1,25 @@
+embedding:
+  # provider: sentence_transformers | ollama
+  provider: sentence_transformers
+  sentence_transformers:
+    model: all-MiniLM-L6-v2
+  ollama:
+    model: nomic-embed-text
+    base_url: http://127.0.0.1:11434
+
+chunking:
+  chunk_size: 400
+  chunk_overlap: 60
+
+retrieval:
+  top_k: 10
+  bm25_weight: 0.3
+  semantic_weight: 0.7
+  rrf_k: 60
+
+api:
+  host: 127.0.0.1
+  port: 8000
+
+# Relative to config/project root, or override with RA_DATA_DIR
+data_dir: data

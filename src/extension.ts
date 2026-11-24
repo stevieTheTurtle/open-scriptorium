@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import { CitationService } from './citationService.ts';
 import { EditingFeatures } from './editing.ts';
 import { CONFIG_SECTION, ProjectResolver } from './project.ts';
+import { ResearchAssistantService } from './researchAssistant.ts';
 import { cleanWord, findWordNear } from './reveal.ts';
 import { CompileSession } from './session.ts';
 import { loadSyncTex } from './synctex.ts';
@@ -26,7 +27,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const projects = new ProjectResolver(context.workspaceState);
   const session = new CompileSession(projects, viewer);
   const editing = new EditingFeatures(projects);
-  const citations = new CitationService();
+  const researchAssistant = new ResearchAssistantService(context);
+  const citations = new CitationService(researchAssistant);
   const lineFlash = vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
     backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
@@ -164,6 +166,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   context.subscriptions.push(
     session,
     editing,
+    researchAssistant,
     citations,
     lineFlash,
     wordFlash,
@@ -172,11 +175,14 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     viewer.onReady((uri) => void pushCitations(uri, true)),
     viewer.onResolveCiteFile(({ uri, request }) => void resolveCiteFile(uri, request)),
     citations.onDidChange(() => void pushCitationsToAll(false)),
+    researchAssistant.onDidSyncZotero(() => void pushCitationsToAll(true)),
     session.onDidFinish((finished) => {
       if (finished.result.success) void pushCitationsToAll(true);
     }),
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration(`${CONFIG_SECTION}.citations`)) void pushCitationsToAll(false);
+      if (event.affectsConfiguration(`${CONFIG_SECTION}.citations`) || event.affectsConfiguration(`${CONFIG_SECTION}.researchAssistant`)) {
+        void pushCitationsToAll(true);
+      }
     }),
     vscode.commands.registerCommand('openLatexStudio.compile', () => compile({})),
     vscode.commands.registerCommand('openLatexStudio.compileClean', () => compile({ clean: true })),
@@ -185,6 +191,12 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('openLatexStudio.syncToCode', syncToCode),
     vscode.commands.registerCommand('openLatexStudio.showLog', () => session.showLog()),
     vscode.commands.registerCommand('openLatexStudio.refreshCitationStatus', refreshCitationStatus),
+    vscode.commands.registerCommand('openLatexStudio.researchAssistant.setup', () => researchAssistant.setupWizard()),
+    vscode.commands.registerCommand('openLatexStudio.researchAssistant.status', () => researchAssistant.showStatus()),
+    vscode.commands.registerCommand('openLatexStudio.researchAssistant.syncZotero', () => researchAssistant.syncZotero(false)),
+    vscode.commands.registerCommand('openLatexStudio.researchAssistant.openWebUi', () => researchAssistant.openWebUi()),
+    vscode.commands.registerCommand('openLatexStudio.researchAssistant.registerClients', () => researchAssistant.registerClientsInteractive()),
+    vscode.commands.registerCommand('openLatexStudio.researchAssistant.installWorkspaceSkill', () => researchAssistant.installWorkspaceSkill()),
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (session.savingForBuild || !LATEX_FILE.test(document.fileName) || trigger(document) !== 'save') return;
       scheduleBuild(document, SAVE_DEBOUNCE_MS);

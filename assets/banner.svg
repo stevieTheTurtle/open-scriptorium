@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" fill="none" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <linearGradient id="heroBg" x1="0" y1="0" x2="1200" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="55%" stop-color="#111C33"/>
+      <stop offset="100%" stop-color="#0F2633"/>
+    </linearGradient>
+    <radialGradient id="glowTeal" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(950 90) rotate(130) scale(360 220)">
+      <stop offset="0%" stop-color="#2DD4BF" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#2DD4BF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowIndigo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(220 260) rotate(30) scale(380 200)">
+      <stop offset="0%" stop-color="#6366F1" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ribbon" x1="40" y1="20" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2DD4BF"/>
+      <stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="340" rx="22" fill="url(#heroBg)" stroke="#1E293B" stroke-width="1.5"/>
+  <rect width="1200" height="340" rx="22" fill="url(#glowTeal)"/>
+  <rect width="1200" height="340" rx="22" fill="url(#glowIndigo)"/>
+
+  <!-- Brand emblem (left) -->
+  <g transform="translate(52, 68) scale(0.76)">
+    <rect x="4" y="4" width="120" height="120" rx="26" fill="#141E35" stroke="#334155" stroke-width="2.5"/>
+    <path d="M30 22h42l20 20v60a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8Z" fill="#F8FAFC"/>
+    <path d="M72 22v14a6 6 0 0 0 6 6h14L72 22Z" fill="#CBD5E1"/>
+    <path d="M36 22h14v34l-7-5.5L36 56V22Z" fill="url(#ribbon)"/>
+    <rect x="34" y="66" width="38" height="5.5" rx="2.75" fill="#475569"/>
+    <rect x="34" y="78" width="46" height="5.5" rx="2.75" fill="#64748B"/>
+    <rect x="34" y="90" width="28" height="5.5" rx="2.75" fill="#94A3B8"/>
+    <circle cx="90" cy="88" r="22" fill="#0F172A" stroke="#334155" stroke-width="2.5"/>
+    <path d="M81 94l9-14 10 11-19 3Z" stroke="#2DD4BF" stroke-width="2.4" stroke-linejoin="round"/>
+    <circle cx="90" cy="80" r="4.2" fill="#FBBF24"/>
+    <circle cx="81" cy="94" r="3.6" fill="#38BDF8"/>
+    <circle cx="100" cy="91" r="3.6" fill="#2DD4BF"/>
+  </g>
+
+  <!-- Title & subtitle -->
+  <text x="172" y="108" fill="#F8FAFC" font-size="38" font-weight="800" letter-spacing="-0.02em">Open LaTeX Studio</text>
+  <text x="174" y="140" fill="#94A3B8" font-size="16" font-weight="500">Local LaTeX Studio + Bundled Research Assistant MCP</text>
+  <text x="174" y="164" fill="#64748B" font-size="14">For VS Code · Antigravity IDE · Claude Code · Zotero</text>
+
+  <!-- Feature pills -->
+  <g transform="translate(54, 212)">
+    <rect x="0" y="0" width="114" height="32" rx="16" fill="#172540" stroke="#334155"/>
+    <circle cx="18" cy="16" r="4" fill="#38BDF8"/>
+    <text x="30" y="20.5" fill="#E2E8F0" font-size="12.5" font-weight="600">Tectonic</text>
+
+    <rect x="126" y="0" width="154" height="32" rx="16" fill="#172540" stroke="#334155"/>
+    <circle cx="144" cy="16" r="4" fill="#818CF8"/>
+    <text x="156" y="20.5" fill="#E2E8F0" font-size="12.5" font-weight="600">PDF.js + SyncTeX</text>
+
+    <rect x="292" y="0" width="174" height="32" rx="16" fill="#102C36" stroke="#1E525E"/>
+    <circle cx="310" cy="16" r="4" fill="#2DD4BF"/>
+    <text x="322" y="20.5" fill="#99F6E4" font-size="12.5" font-weight="600">Research MCP</text>
+
+    <rect x="0" y="44" width="144" height="32" rx="16" fill="#1F1629" stroke="#5B3678"/>
+    <circle cx="18" cy="60" r="4" fill="#C084FC"/>
+    <text x="30" y="64.5" fill="#E9D5FF" font-size="12.5" font-weight="600">Zotero Sync</text>
+
+    <rect x="156" y="44" width="194" height="32" rx="16" fill="#251E0E" stroke="#78561F"/>
+    <circle cx="174" cy="60" r="4" fill="#FBBF24"/>
+    <text x="186" y="64.5" fill="#FDE68A" font-size="12.5" font-weight="600">Citation Evidence</text>
+  </g>
+
+  <!-- Right-side stylized IDE split-pane preview -->
+  <g transform="translate(650, 34)">
+    <!-- Window frame -->
+    <rect x="0" y="0" width="504" height="272" rx="14" fill="#0D1526" stroke="#334155" stroke-width="1.5"/>
+    <!-- Window bar -->
+    <rect x="0" y="0" width="504" height="32" rx="14" fill="#152038"/>
+    <rect x="0" y="18" width="504" height="14" fill="#152038"/>
+    <circle cx="18" cy="16" r="4.5" fill="#F87171"/>
+    <circle cx="34" cy="16" r="4.5" fill="#FBBF24"/>
+    <circle cx="50" cy="16" r="4.5" fill="#34D399"/>
+    <text x="74" y="20" fill="#94A3B8" font-size="11" font-weight="600">01_introduction.tex  |  thesis.pdf</text>
+
+    <!-- Left pane: LaTeX code -->
+    <rect x="14" y="44" width="224" height="214" rx="8" fill="#09101D" stroke="#1E293B"/>
+    <text x="26" y="68" fill="#818CF8" font-size="11" font-family="ui-monospace, Consolas, monospace">\section{Introduction}</text>
+    <rect x="26" y="80" width="186" height="6" rx="3" fill="#334155"/>
+    <rect x="26" y="94" width="164" height="6" rx="3" fill="#334155"/>
+    <rect x="26" y="110" width="198" height="22" rx="5" fill="#14293D" stroke="#38BDF8" stroke-opacity="0.5"/>
+    <text x="34" y="125" fill="#7DD3FC" font-size="10.5" font-family="ui-monospace, Consolas, monospace">self-attention \cite{vaswani17}</text>
+    <rect x="26" y="142" width="176" height="6" rx="3" fill="#334155"/>
+    <rect x="26" y="156" width="190" height="6" rx="3" fill="#334155"/>
+    <rect x="26" y="170" width="142" height="6" rx="3" fill="#334155"/>
+    <rect x="26" y="196" width="196" height="48" rx="7" fill="#102826" stroke="#2DD4BF" stroke-opacity="0.45"/>
+    <text x="36" y="214" fill="#5EEAD4" font-size="10" font-weight="700">MCP: search_papers()</text>
+    <text x="36" y="231" fill="#94A3B8" font-size="9.5">→ Verbatim quote + [p.2] saved</text>
+
+    <!-- Right pane: PDF preview with citation highlights + tooltip -->
+    <rect x="252" y="44" width="238" height="214" rx="8" fill="#F8FAFC"/>
+    <rect x="270" y="62" width="128" height="9" rx="3" fill="#1E293B"/>
+    <rect x="270" y="82" width="196" height="5" rx="2.5" fill="#94A3B8"/>
+    <rect x="270" y="94" width="122" height="5" rx="2.5" fill="#94A3B8"/>
+    <!-- Emerald verified citation pill -->
+    <rect x="398" y="90" width="66" height="13" rx="4" fill="#D1FAE5" stroke="#10B981" stroke-width="1"/>
+    <text x="404" y="99.5" fill="#065F46" font-size="8" font-weight="700">[Vaswani 17]</text>
+
+    <rect x="270" y="110" width="98" height="5" rx="2.5" fill="#94A3B8"/>
+    <!-- Amber second-hand pill -->
+    <rect x="374" y="106" width="54" height="13" rx="4" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>
+    <text x="380" y="115.5" fill="#92400E" font-size="8" font-weight="700">[Gray 07]</text>
+
+    <!-- Coral unverified pill -->
+    <rect x="434" y="106" width="42" height="13" rx="4" fill="#FEE2E2" stroke="#EF4444" stroke-width="1"/>
+    <text x="439" y="115.5" fill="#991B1B" font-size="8" font-weight="700">[New]</text>
+
+    <!-- Floating evidence hover tooltip -->
+    <rect x="266" y="132" width="210" height="114" rx="9" fill="#0F172A" stroke="#2DD4BF" stroke-width="1.3"/>
+    <text x="278" y="151" fill="#F8FAFC" font-size="10.5" font-weight="700">Attention Is All You Need (2017)</text>
+    <text x="278" y="165" fill="#34D399" font-size="9" font-weight="600">✓ Indexed in Zotero · p. 2</text>
+    <rect x="278" y="174" width="186" height="1" fill="#1E293B"/>
+    <text x="278" y="191" fill="#CBD5E1" font-size="9.2">“The Transformer is the first</text>
+    <text x="278" y="205" fill="#CBD5E1" font-size="9.2">transduction model relying entirely</text>
+    <text x="278" y="219" fill="#CBD5E1" font-size="9.2">on self-attention.”</text>
+    <text x="278" y="236" fill="#64748B" font-size="8.5">references.notes.json · SyncTeX matched</text>
+  </g>
+</svg>

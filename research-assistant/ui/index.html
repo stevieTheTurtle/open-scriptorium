@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research Assistant — Open LaTeX Studio</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect x='4' y='4' width='120' height='120' rx='26' fill='%23141E35'/%3E%3Cpath d='M30 22h42l20 20v60a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8Z' fill='%23F8FAFC'/%3E%3Cpath d='M36 22h14v34l-7-5.5L36 56V22Z' fill='%2314B8A6'/%3E%3Ccircle cx='90' cy='88' r='22' fill='%230F172A'/%3E%3Ccircle cx='90' cy='80' r='5' fill='%23FBBF24'/%3E%3Ccircle cx='81' cy='94' r='4' fill='%2338BDF8'/%3E%3Ccircle cx='100' cy='91' r='4' fill='%232DD4BF'/%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .drop-zone.active { border-color: #6366f1; background: #eef2ff; }
+    .spinner { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .tag { display: inline-block; padding: 1px 8px; border-radius: 9999px; font-size: 0.7rem; background: #e0e7ff; color: #4338ca; margin: 1px; }
+    .highlight { background: #fef9c3; border-radius: 2px; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+<!-- ── Header ─────────────────────────────────────────────────────────────── -->
+<header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+  <div class="flex items-center gap-3">
+    <svg class="w-9 h-9 flex-shrink-0 shadow-sm rounded-lg" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="124" height="124" rx="26" fill="#141E35"/>
+      <path d="M30 22h42l20 20v60a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8Z" fill="#F8FAFC"/>
+      <path d="M72 22v14a6 6 0 0 0 6 6h14L72 22Z" fill="#CBD5E1"/>
+      <path d="M36 22h14v34l-7-5.5L36 56V22Z" fill="#14B8A6"/>
+      <rect x="34" y="66" width="38" height="5.5" rx="2.75" fill="#475569"/>
+      <rect x="34" y="78" width="46" height="5.5" rx="2.75" fill="#64748B"/>
+      <rect x="34" y="90" width="28" height="5.5" rx="2.75" fill="#94A3B8"/>
+      <circle cx="90" cy="88" r="22" fill="#0F172A" stroke="#334155" stroke-width="2"/>
+      <path d="M81 94l9-14 10 11-19 3Z" stroke="#2DD4BF" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="90" cy="80" r="4.2" fill="#FBBF24"/>
+      <circle cx="81" cy="94" r="3.6" fill="#38BDF8"/>
+      <circle cx="100" cy="91" r="3.6" fill="#2DD4BF"/>
+    </svg>
+    <div class="leading-tight">
+      <div class="flex items-center gap-2">
+        <h1 class="text-lg font-bold text-gray-900">Research Assistant</h1>
+        <span id="badge-count" class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium hidden"></span>
+      </div>
+      <p class="text-[11px] text-gray-400 font-medium">Open LaTeX Studio · Local Paper Knowledge Base</p>
+    </div>
+  </div>
+
+  <!-- Collection selector -->
+  <div class="flex items-center gap-2">
+    <div class="relative flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+      <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+      </svg>
+      <select id="collection-select" onchange="switchCollection(this.value)"
+        class="bg-transparent text-sm font-medium text-gray-700 focus:outline-none cursor-pointer pr-6 appearance-none">
+      </select>
+      <svg class="w-3.5 h-3.5 text-gray-400 pointer-events-none absolute right-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+      </svg>
+    </div>
+    <button onclick="openNewCollection()" title="New collection"
+      class="p-2 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-300 text-gray-500 hover:text-indigo-600 rounded-xl transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+      </svg>
+    </button>
+    <button onclick="openDeleteCollection()" title="Delete collection"
+      class="p-2 bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-200 text-gray-400 hover:text-red-500 rounded-xl transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+      </svg>
+    </button>
+  </div>
+  <div class="flex items-center gap-3">
+    <span id="status-text" class="text-sm text-gray-500"></span>
+
+    <!-- arXiv toggle -->
+    <button id="arxiv-toggle" onclick="toggleArxiv()"
+      title="Enable/disable arXiv online search for the AI agent"
+      class="flex items-center gap-2 border rounded-lg px-3 py-2 text-sm font-medium transition-colors select-none
+             bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
+      data-enabled="false">
+      <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+      </svg>
+      <!-- toggle pill -->
+      <span class="relative inline-flex h-4 w-8 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200"
+        id="arxiv-pill" style="background:#d1d5db">
+        <span class="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200"
+          id="arxiv-knob" style="transform:translateX(0)"></span>
+      </span>
+      <span id="arxiv-label">arXiv: off</span>
+    </button>
+
+    <button onclick="openUpload()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+      </svg>
+      Add Papers
+    </button>
+  </div>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<main class="max-w-6xl mx-auto px-6 py-6">
+
+  <!-- Search -->
+  <div class="mb-6 flex gap-3">
+    <div class="relative flex-1">
+      <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
+      </svg>
+      <input id="search-input" type="text" placeholder="Search papers…"
+        class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+        onkeydown="if(event.key==='Enter') doSearch()" />
+    </div>
+    <button onclick="doSearch()" class="bg-white border border-gray-300 hover:border-indigo-500 text-gray-700 text-sm px-4 py-2.5 rounded-lg transition-colors">
+      Search
+    </button>
+    <button onclick="clearSearch()" class="text-gray-500 hover:text-gray-700 text-sm px-3 py-2.5">
+      Clear
+    </button>
+
+    <!-- Filters -->
+    <select id="filter-tag" onchange="loadPapers()" class="border border-gray-300 rounded-lg text-sm px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">All tags</option>
+    </select>
+    <select id="filter-year" onchange="loadPapers()" class="border border-gray-300 rounded-lg text-sm px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">All years</option>
+    </select>
+  </div>
+
+  <!-- Paper list / Search results -->
+  <div id="content-area"></div>
+</main>
+
+<!-- ── Upload Modal ───────────────────────────────────────────────────────── -->
+<div id="upload-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg fade-in">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <h2 class="font-semibold text-gray-900">Add Papers</h2>
+      <button onclick="closeUpload()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div class="p-6">
+      <div id="drop-zone"
+        class="drop-zone border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-indigo-400 transition-colors mb-4"
+        onclick="document.getElementById('file-input').click()"
+        ondragover="ev.preventDefault();this.classList.add('active')"
+        ondragleave="this.classList.remove('active')"
+        ondrop="handleDrop(event)">
+        <svg class="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <p class="text-sm text-gray-600 font-medium">Drop PDFs here or click to browse</p>
+        <p class="text-xs text-gray-400 mt-1">Multiple files supported</p>
+      </div>
+      <input id="file-input" type="file" accept=".pdf" multiple class="hidden" onchange="handleFiles(this.files)" />
+
+      <div class="mb-4">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Tags (comma-separated)</label>
+        <input id="upload-tags" type="text" placeholder="e.g. ml, transformers, nlp"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+
+      <div id="upload-queue" class="space-y-2 max-h-52 overflow-y-auto mb-4"></div>
+
+      <div class="flex gap-3">
+        <button onclick="startUpload()" id="upload-btn"
+          class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors disabled:opacity-50">
+          Upload & Index
+        </button>
+        <button onclick="closeUpload()" class="px-4 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Paper Detail Modal ─────────────────────────────────────────────────── -->
+<div id="detail-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto fade-in">
+    <div class="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white">
+      <h2 id="detail-title" class="font-semibold text-gray-900 text-lg pr-4"></h2>
+      <button onclick="closeDetail()" class="text-gray-400 hover:text-gray-600 flex-shrink-0">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+    <div id="detail-body" class="p-6"></div>
+  </div>
+</div>
+
+<!-- ── New Collection Modal ──────────────────────────────────────────────── -->
+<div id="new-col-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm fade-in">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <h2 class="font-semibold text-gray-900">New Collection</h2>
+      <button onclick="closeNewCollection()" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <input id="new-col-name" type="text" placeholder="e.g. Robotics Papers"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          onkeydown="if(event.key==='Enter') createCollection()" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Description <span class="text-gray-400 font-normal">(optional)</span></label>
+        <input id="new-col-desc" type="text" placeholder="What's in this collection?"
+          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
+      <div class="flex gap-3 pt-1">
+        <button onclick="createCollection()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+          Create
+        </button>
+        <button onclick="closeNewCollection()" class="px-4 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allPapers = [];
+let uploadFiles = [];
+let searchMode = false;
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadCollections();
+  loadStatus();
+  loadPapers();
+  loadArxivToggle();
+  setInterval(() => fetch('/api/heartbeat').catch(() => {}), 5000);
+});
+
+// ── arXiv toggle ───────────────────────────────────────────────────────────
+async function loadArxivToggle() {
+  try {
+    const s = await api('/api/settings');
+    setArxivUI(s.arxiv_search_enabled);
+  } catch (e) { /* server may not be running in static preview */ }
+}
+
+function setArxivUI(enabled) {
+  const btn   = document.getElementById('arxiv-toggle');
+  const pill  = document.getElementById('arxiv-pill');
+  const knob  = document.getElementById('arxiv-knob');
+  const label = document.getElementById('arxiv-label');
+  btn.dataset.enabled = enabled ? 'true' : 'false';
+  if (enabled) {
+    pill.style.background = '#6366f1';
+    knob.style.transform  = 'translateX(16px)';
+    label.textContent = 'arXiv: on';
+    btn.className = btn.className
+      .replace('bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300',
+               'bg-indigo-50 border-indigo-300 text-indigo-700 hover:border-indigo-400');
+  } else {
+    pill.style.background = '#d1d5db';
+    knob.style.transform  = 'translateX(0)';
+    label.textContent = 'arXiv: off';
+    btn.className = btn.className
+      .replace('bg-indigo-50 border-indigo-300 text-indigo-700 hover:border-indigo-400',
+               'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300');
+  }
+}
+
+async function toggleArxiv() {
+  const btn = document.getElementById('arxiv-toggle');
+  const newVal = btn.dataset.enabled !== 'true';
+  try {
+    const s = await api('/api/settings', 'PATCH', { arxiv_search_enabled: newVal });
+    setArxivUI(s.arxiv_search_enabled);
+  } catch (e) {
+    showError('Could not update arXiv setting: ' + e.message);
+  }
+}
+
+// ── Collections ────────────────────────────────────────────────────────────
+async function loadCollections() {
+  try {
+    const cols = await api('/api/collections');
+    const sel = document.getElementById('collection-select');
+    sel.innerHTML = cols.map(c =>
+      `<option value="${escHtml(c.name)}" ${c.active ? 'selected' : ''}>${escHtml(c.name)}</option>`
+    ).join('');
+  } catch (e) { console.warn('Could not load collections', e); }
+}
+
+async function switchCollection(name) {
+  try {
+    await api(`/api/collections/${encodeURIComponent(name)}/activate`, 'PUT');
+    loadStatus();
+    loadPapers();
+  } catch (e) {
+    showError('Switch failed: ' + e.message);
+    loadCollections(); // revert UI to actual active
+  }
+}
+
+function openNewCollection() {
+  document.getElementById('new-col-name').value = '';
+  document.getElementById('new-col-desc').value = '';
+  document.getElementById('new-col-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('new-col-name').focus(), 50);
+}
+
+function closeNewCollection() {
+  document.getElementById('new-col-modal').classList.add('hidden');
+}
+
+async function createCollection() {
+  const name = document.getElementById('new-col-name').value.trim();
+  const desc = document.getElementById('new-col-desc').value.trim();
+  if (!name) return;
+  try {
+    await api('/api/collections', 'POST', { name, description: desc });
+    closeNewCollection();
+    loadCollections();
+  } catch (e) {
+    showError('Create failed: ' + e.message);
+  }
+}
+
+async function openDeleteCollection() {
+  const sel = document.getElementById('collection-select');
+  const name = sel.value;
+  if (!name) return;
+  if (!confirm(`Delete collection "${name}" and ALL its papers? This cannot be undone.`)) return;
+  try {
+    await api(`/api/collections/${encodeURIComponent(name)}`, 'DELETE');
+    // switch to first remaining collection
+    const cols = await api('/api/collections');
+    if (cols.length > 0) {
+      await api(`/api/collections/${encodeURIComponent(cols[0].name)}/activate`, 'PUT');
+    }
+    loadCollections();
+    loadStatus();
+    loadPapers();
+  } catch (e) {
+    showError('Delete failed: ' + e.message);
+  }
+}
+
+async function loadStatus() {
+  try {
+    const s = await api('/api/status');
+    document.getElementById('status-text').textContent =
+      `${s.paper_count} papers · ${s.chunk_count} chunks`;
+    const badge = document.getElementById('badge-count');
+    badge.textContent = s.paper_count;
+    badge.classList.remove('hidden');
+  } catch {}
+}
+
+// ── Papers ─────────────────────────────────────────────────────────────────
+async function loadPapers() {
+  searchMode = false;
+  const tag = document.getElementById('filter-tag').value;
+  const year = document.getElementById('filter-year').value;
+  let url = '/api/papers';
+  const params = [];
+  if (tag) params.push(`tag=${encodeURIComponent(tag)}`);
+  if (year) params.push(`year=${year}`);
+  if (params.length) url += '?' + params.join('&');
+
+  try {
+    allPapers = await api(url);
+    populateFilters(allPapers);
+    renderPapers(allPapers);
+  } catch (e) {
+    showError('Failed to load papers: ' + e.message);
+  }
+}
+
+function populateFilters(papers) {
+  const tags = [...new Set(papers.flatMap(p => p.tags))].sort();
+  const years = [...new Set(papers.map(p => p.year).filter(Boolean))].sort((a,b) => b-a);
+
+  const tagSel = document.getElementById('filter-tag');
+  const curTag = tagSel.value;
+  tagSel.innerHTML = '<option value="">All tags</option>' +
+    tags.map(t => `<option value="${t}" ${t===curTag?'selected':''}>${t}</option>`).join('');
+
+  const yearSel = document.getElementById('filter-year');
+  const curYear = yearSel.value;
+  yearSel.innerHTML = '<option value="">All years</option>' +
+    years.map(y => `<option value="${y}" ${String(y)===curYear?'selected':''}>${y}</option>`).join('');
+}
+
+function renderPapers(papers) {
+  const area = document.getElementById('content-area');
+  if (!papers.length) {
+    area.innerHTML = `
+      <div class="text-center py-20 text-gray-400">
+        <svg class="w-12 h-12 mx-auto mb-3 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <p class="text-sm">No papers yet. Click <strong>Add Papers</strong> to get started.</p>
+      </div>`;
+    return;
+  }
+
+  const sorted = [...papers].sort((a, b) => a.title.localeCompare(b.title));
+  area.innerHTML = `
+    <div class="grid gap-3">
+      ${sorted.map(p => paperCard(p)).join('')}
+    </div>`;
+}
+
+// Paper registry — avoids embedding any user data in onclick attributes
+const _paperRegistry = {};
+
+function paperCard(p) {
+  _paperRegistry[p.id] = p;   // store full object, reference by id only
+  const authors = (p.authors || []).slice(0,3).join(', ') + (p.authors && p.authors.length > 3 ? ' et al.' : '');
+  const tags = (p.tags || []).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+  const statusColor = p.status === 'indexed' ? 'text-green-600' :
+                      p.status === 'failed'  ? 'text-red-500' : 'text-yellow-500';
+  const title = p.title || '(No title)';
+  return `
+    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 hover:shadow-sm transition-all fade-in">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex-1 min-w-0 cursor-pointer" data-action="detail" data-id="${p.id}">
+          <h3 class="font-semibold text-gray-900 text-sm leading-snug mb-1">${escHtml(title)}</h3>
+          ${authors ? `<p class="text-xs text-gray-500 mb-1">${escHtml(authors)}${p.year ? ` · ${p.year}` : ''}</p>` : ''}
+          <div class="flex items-center gap-2 flex-wrap mt-1">
+            ${tags}
+            <span class="text-xs ${statusColor}">${p.status}</span>
+            <span class="text-xs text-gray-400">${p.chunk_count} chunks · ${p.page_count} pages</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button data-action="open-pdf" data-id="${p.id}" title="Open PDF"
+            class="p-2 bg-indigo-50 text-indigo-500 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+            </svg>
+          </button>
+          <button data-action="reveal-pdf" data-id="${p.id}" title="Show in Folder"
+            class="p-2 bg-amber-50 text-amber-500 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+            </svg>
+          </button>
+          <button data-action="delete" data-id="${p.id}" title="Delete"
+            class="p-2 bg-red-50 text-red-400 hover:bg-red-100 border border-red-200 rounded-lg transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// Single delegated click handler — no inline JS with user data
+document.addEventListener('click', function(e) {
+  const detail = e.target.closest('[data-action="detail"]');
+  if (detail) { showDetail(detail.dataset.id); return; }
+
+  const del = e.target.closest('[data-action="delete"]');
+  if (del) {
+    const p = _paperRegistry[del.dataset.id];
+    confirmDelete(del.dataset.id, p ? p.title : del.dataset.id);
+    return;
+  }
+
+  const openPdf = e.target.closest('[data-action="open-pdf"]');
+  if (openPdf) {
+    api(`/api/papers/${openPdf.dataset.id}/open`).catch(err => showError('Cannot open PDF: ' + err.message));
+    return;
+  }
+
+  const reveal = e.target.closest('[data-action="reveal-pdf"]');
+  if (reveal) {
+    api(`/api/papers/${reveal.dataset.id}/reveal`).catch(err => showError('Cannot reveal file: ' + err.message));
+    return;
+  }
+
+  const saveTags = e.target.closest('[data-action="save-tags"]');
+  if (saveTags) {
+    const raw = document.getElementById('tag-input').value;
+    const tags = raw.split(',').map(t => t.trim()).filter(Boolean);
+    api(`/api/papers/${saveTags.dataset.id}/tags`, 'PATCH', { tags })
+      .then(() => { closeDetail(); loadPapers(); })
+      .catch(err => showError('Failed to save tags: ' + err.message));
+    return;
+  }
+});
+
+// ── Search ─────────────────────────────────────────────────────────────────
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) { loadPapers(); return; }
+
+  searchMode = true;
+  const area = document.getElementById('content-area');
+  area.innerHTML = `<div class="flex items-center gap-2 text-gray-500 text-sm py-4"><svg class="spinner w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Searching…</div>`;
+
+  try {
+    const results = await api('/api/search', 'POST', { query: q, top_k: 8 });
+    renderSearchResults(results, q);
+  } catch (e) {
+    showError('Search failed: ' + e.message);
+  }
+}
+
+function renderSearchResults(results, query) {
+  const area = document.getElementById('content-area');
+  if (!results.length) {
+    area.innerHTML = `<p class="text-gray-500 text-sm py-4">No results for "${escHtml(query)}".</p>`;
+    return;
+  }
+  area.innerHTML = `
+    <p class="text-xs text-gray-400 mb-3">${results.length} results for "${escHtml(query)}"</p>
+    <div class="space-y-4">
+      ${results.map(r => searchResultCard(r, query)).join('')}
+    </div>`;
+}
+
+function searchResultCard(r, query) {
+  const p = r.paper;
+  _paperRegistry[p.id] = p;
+  const authors = (p.authors||[]).slice(0,3).join(', ') + (p.authors && p.authors.length > 3 ? ' et al.' : '');
+  const tags = (p.tags||[]).map(t => `<span class="tag">${escHtml(t)}</span>`).join('');
+  const chunks = r.chunks.slice(0,2).map(c => `
+    <div class="mt-2 bg-gray-50 rounded-lg p-3 text-xs text-gray-700 leading-relaxed">
+      <span class="text-gray-400 font-medium">[p.${c.page_number}]</span> ${highlightQuery(escHtml(c.content.substring(0,400)), query)}…
+    </div>`).join('');
+
+  return `
+    <div class="bg-white border border-gray-200 rounded-xl p-4 hover:border-indigo-300 transition-all fade-in">
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <h3 class="font-semibold text-gray-900 text-sm cursor-pointer hover:text-indigo-600"
+          data-action="detail" data-id="${p.id}">${escHtml(p.title || '(No title)')}</h3>
+        <span class="text-xs text-indigo-600 font-medium flex-shrink-0">score: ${r.score.toFixed(3)}</span>
+      </div>
+      ${authors ? `<p class="text-xs text-gray-500">${escHtml(authors)}${p.year ? ` · ${p.year}` : ''}</p>` : ''}
+      <div class="flex flex-wrap gap-1 mt-1">${tags}</div>
+      ${chunks}
+    </div>`;
+}
+
+function highlightQuery(text, query) {
+  const words = query.split(/\s+/).filter(w => w.length > 2);
+  let result = text;
+  words.forEach(w => {
+    const re = new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    result = result.replace(re, '<mark class="highlight">$1</mark>');
+  });
+  return result;
+}
+
+function clearSearch() {
+  document.getElementById('search-input').value = '';
+  loadPapers();
+}
+
+// ── Detail Modal ───────────────────────────────────────────────────────────
+async function showDetail(paperId) {
+  try {
+    const p = await api(`/api/papers/${paperId}`);
+    document.getElementById('detail-title').textContent = p.title;
+    const body = document.getElementById('detail-body');
+    body.innerHTML = `
+      <!-- File actions -->
+      <div class="flex gap-2 mb-4">
+        <button data-action="open-pdf" data-id="${p.id}"
+          class="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+          Open PDF
+        </button>
+        <button data-action="reveal-pdf" data-id="${p.id}"
+          class="flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 border border-amber-200 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+          </svg>
+          Show in Folder
+        </button>
+      </div>
+      <dl class="space-y-3 text-sm">
+        ${(p.authors||[]).length ? `<div><dt class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Authors</dt><dd class="text-gray-800">${escHtml(p.authors.join(', '))}</dd></div>` : ''}
+        ${p.year ? `<div><dt class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Year</dt><dd class="text-gray-800">${p.year}</dd></div>` : ''}
+        <div><dt class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Paper ID</dt><dd class="text-gray-500 font-mono text-xs">${p.id}</dd></div>
+        <div><dt class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">File</dt><dd class="text-gray-500 text-xs break-all">${escHtml(p.file_path)}</dd></div>
+        <div><dt class="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Stats</dt><dd class="text-gray-800">${p.page_count} pages · ${p.chunk_count} chunks</dd></div>
+        ${(p.tags||[]).length ? `
+          <div>
+            <dt class="text-xs text-gray-400 uppercase tracking-wide mb-1">Tags</dt>
+            <dd class="flex flex-wrap gap-1">${p.tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</dd>
+          </div>` : ''}
+        ${p.abstract ? `
+          <div>
+            <dt class="text-xs text-gray-400 uppercase tracking-wide mb-1">Abstract</dt>
+            <dd class="text-gray-700 leading-relaxed bg-gray-50 rounded-lg p-3">${escHtml(p.abstract)}</dd>
+          </div>` : ''}
+      </dl>
+      <div class="mt-4 pt-4 border-t flex gap-2">
+        <input id="tag-input" type="text" placeholder="Add tags…" value="${escHtml((p.tags||[]).join(', '))}"
+          class="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        <button data-action="save-tags" data-id="${p.id}" class="bg-indigo-600 text-white text-sm px-3 py-1.5 rounded-lg hover:bg-indigo-700">Save tags</button>
+      </div>`;
+    document.getElementById('detail-modal').classList.remove('hidden');
+  } catch (e) {
+    showError('Failed to load paper: ' + e.message);
+  }
+}
+
+
+function closeDetail() {
+  document.getElementById('detail-modal').classList.add('hidden');
+}
+
+// ── Upload Modal ───────────────────────────────────────────────────────────
+function openUpload() {
+  uploadFiles = [];
+  document.getElementById('upload-queue').innerHTML = '';
+  document.getElementById('upload-tags').value = '';
+  document.getElementById('upload-modal').classList.remove('hidden');
+}
+
+function closeUpload() {
+  document.getElementById('upload-modal').classList.add('hidden');
+  uploadFiles = [];
+}
+
+function handleDrop(ev) {
+  ev.preventDefault();
+  document.getElementById('drop-zone').classList.remove('active');
+  handleFiles(ev.dataTransfer.files);
+}
+
+function handleFiles(fileList) {
+  const pdfs = [...fileList].filter(f => f.name.toLowerCase().endsWith('.pdf'));
+  pdfs.forEach(f => {
+    if (!uploadFiles.find(u => u.name === f.name && u.size === f.size)) {
+      uploadFiles.push(f);
+    }
+  });
+  renderQueue();
+}
+
+function renderQueue() {
+  const q = document.getElementById('upload-queue');
+  q.innerHTML = uploadFiles.map((f, i) => `
+    <div id="file-row-${i}" class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
+      <span class="truncate text-gray-700">${escHtml(f.name)}</span>
+      <span id="file-status-${i}" class="text-xs text-gray-400 ml-2 flex-shrink-0">${(f.size/1024/1024).toFixed(1)} MB</span>
+    </div>`).join('');
+}
+
+async function startUpload() {
+  if (!uploadFiles.length) return;
+  const tags = document.getElementById('upload-tags').value;
+  const btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+
+  for (let i = 0; i < uploadFiles.length; i++) {
+    const f = uploadFiles[i];
+    const statusEl = document.getElementById(`file-status-${i}`);
+    statusEl.innerHTML = `<svg class="spinner w-3 h-3 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="4" stroke-dasharray="30 70"/></svg> uploading…`;
+
+    try {
+      const form = new FormData();
+      form.append('file', f);
+      form.append('tags', tags);
+      const res = await fetch('/api/papers/upload', { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.success) {
+        statusEl.textContent = '✓ indexed';
+        statusEl.className = 'text-xs text-green-600 ml-2 flex-shrink-0';
+      } else {
+        const msg = data.error || 'unknown error';
+        statusEl.title = msg;  // full message on hover
+        statusEl.textContent = '✗ ' + (msg.length > 60 ? msg.slice(0, 57) + '…' : msg);
+        statusEl.className = 'text-xs text-red-500 ml-2 flex-shrink-0 cursor-help max-w-xs truncate';
+      }
+    } catch (e) {
+      statusEl.title = e.message;
+      statusEl.textContent = '✗ ' + e.message;
+      statusEl.className = 'text-xs text-red-500 ml-2 flex-shrink-0 cursor-help';
+    }
+  }
+
+  btn.disabled = false;
+  loadPapers();
+  loadStatus();
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────
+async function confirmDelete(paperId, title) {
+  if (!confirm(`Remove "${title}" from the knowledge base?`)) return;
+  try {
+    await api(`/api/papers/${paperId}`, 'DELETE');
+    loadPapers();
+    loadStatus();
+  } catch (e) {
+    showError('Delete failed: ' + e.message);
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+async function api(url, method = 'GET', body = null) {
+  const opts = { method, headers: {} };
+  if (body) { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function showError(msg) {
+  const div = document.createElement('div');
+  div.className = 'fixed bottom-4 right-4 bg-red-600 text-white text-sm px-4 py-3 rounded-xl shadow-lg z-50 fade-in';
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 4000);
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(str) {
+  return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>

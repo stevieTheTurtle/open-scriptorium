@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" fill="none" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <linearGradient id="canvas" x1="0" y1="0" x2="960" y2="440" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B1220"/>
+      <stop offset="100%" stop-color="#111C33"/>
+    </linearGradient>
+    <linearGradient id="cardBlue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#172540"/>
+      <stop offset="100%" stop-color="#131E34"/>
+    </linearGradient>
+    <linearGradient id="cardTeal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#102C36"/>
+      <stop offset="100%" stop-color="#0E222B"/>
+    </linearGradient>
+    <linearGradient id="cardAmber" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#292116"/>
+      <stop offset="100%" stop-color="#1F1912"/>
+    </linearGradient>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#2DD4BF"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#60A5FA"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#FBBF24"/>
+    </marker>
+  </defs>
+
+  <rect width="960" height="440" rx="18" fill="url(#canvas)" stroke="#1E293B" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <text x="32" y="40" fill="#F8FAFC" font-size="18" font-weight="700">Open LaTeX Studio + Research Assistant Architecture</text>
+  <text x="32" y="60" fill="#94A3B8" font-size="12">All components ship inside one .vsix extension; .venv stays machine-local while data/ and Zotero can cloud-sync across PCs.</text>
+
+  <!-- COLUMN 1: Workspace & Extension -->
+  <rect x="28" y="84" width="268" height="328" rx="14" fill="url(#cardBlue)" stroke="#253859" stroke-width="1.5"/>
+  <text x="46" y="110" fill="#93C5FD" font-size="11" font-weight="700" letter-spacing="0.08em">VS CODE / ANTIGRAVITY IDE</text>
+  <text x="46" y="130" fill="#F8FAFC" font-size="15" font-weight="700">Open LaTeX Studio Extension</text>
+
+  <rect x="44" y="146" width="236" height="54" rx="9" fill="#0F172A" stroke="#334155"/>
+  <text x="58" y="168" fill="#E2E8F0" font-size="12.5" font-weight="600">LaTeX Workspace</text>
+  <text x="58" y="186" fill="#94A3B8" font-size="11">.tex  ·  .bib  ·  references.notes.json</text>
+
+  <rect x="44" y="212" width="236" height="56" rx="9" fill="#0F172A" stroke="#334155"/>
+  <text x="58" y="234" fill="#E2E8F0" font-size="12.5" font-weight="600">Tectonic + PDF.js + SyncTeX</text>
+  <text x="58" y="252" fill="#94A3B8" font-size="11">Compile on save · Two-way jump · Hover cards</text>
+
+  <rect x="44" y="280" width="236" height="56" rx="9" fill="#0F172A" stroke="#2DD4BF" stroke-opacity="0.45"/>
+  <text x="58" y="302" fill="#5EEAD4" font-size="12.5" font-weight="600">Built-in Citation Bridge</text>
+  <text x="58" y="320" fill="#94A3B8" font-size="11">Stdlib citation_status.py → Green/Yellow/Red</text>
+
+  <rect x="44" y="348" width="236" height="48" rx="9" fill="#0F172A" stroke="#60A5FA" stroke-opacity="0.45"/>
+  <text x="58" y="369" fill="#93C5FD" font-size="12" font-weight="600">1-Click Setup &amp; Commands</text>
+  <text x="58" y="385" fill="#94A3B8" font-size="10.5">Creates .venv · Syncs Zotero · Registers MCP</text>
+
+  <!-- COLUMN 2: Bundled Research Assistant + Data -->
+  <rect x="342" y="84" width="290" height="202" rx="14" fill="url(#cardTeal)" stroke="#1E525E" stroke-width="1.5"/>
+  <text x="360" y="110" fill="#5EEAD4" font-size="11" font-weight="700" letter-spacing="0.08em">MACHINE-LOCAL RUNTIME (~/.open-latex-studio)</text>
+  <text x="360" y="130" fill="#F8FAFC" font-size="15" font-weight="700">Research Assistant (.venv)</text>
+
+  <rect x="358" y="146" width="124" height="56" rx="9" fill="#0B1920" stroke="#1E525E"/>
+  <text x="370" y="168" fill="#5EEAD4" font-size="12" font-weight="600">MCP Server</text>
+  <text x="370" y="185" fill="#94A3B8" font-size="10.5">stdio FastMCP</text>
+
+  <rect x="492" y="146" width="124" height="56" rx="9" fill="#0B1920" stroke="#1E525E"/>
+  <text x="504" y="168" fill="#5EEAD4" font-size="12" font-weight="600">Zotero Sync</text>
+  <text x="504" y="185" fill="#94A3B8" font-size="10.5">Incremental PDFs</text>
+
+  <rect x="358" y="212" width="258" height="58" rx="9" fill="#0B1920" stroke="#1E525E"/>
+  <text x="370" y="234" fill="#E2E8F0" font-size="12" font-weight="600">FastAPI Web UI (:8000) &amp; Typer CLI</text>
+  <text x="370" y="252" fill="#94A3B8" font-size="10.5">Upload PDFs · Hybrid BM25 + Vector Search · arXiv</text>
+
+  <!-- Data Layer (Cloud-Syncable) -->
+  <rect x="342" y="304" width="290" height="108" rx="14" fill="url(#cardAmber)" stroke="#78561F" stroke-width="1.5"/>
+  <text x="360" y="328" fill="#FCD34D" font-size="11" font-weight="700" letter-spacing="0.08em">SHARED OR LOCAL INDEX (RA_DATA_DIR)</text>
+  <text x="360" y="348" fill="#F8FAFC" font-size="14" font-weight="700">Paper Knowledge Base (data/)</text>
+  <text x="360" y="369" fill="#CBD5E1" font-size="11.5">• metadata.db  (SQLite + FTS5 full-text + @citekeys)</text>
+  <text x="360" y="388" fill="#CBD5E1" font-size="11.5">• chroma/  (sentence-transformers or Ollama vectors)</text>
+  <text x="360" y="403" fill="#FBBF24" font-size="10">Cloud-syncable across PCs (e.g. OneDrive)</text>
+
+  <!-- COLUMN 3: AI Clients & Zotero -->
+  <rect x="678" y="84" width="254" height="196" rx="14" fill="url(#cardBlue)" stroke="#253859" stroke-width="1.5"/>
+  <text x="696" y="110" fill="#93C5FD" font-size="11" font-weight="700" letter-spacing="0.08em">AUTO-REGISTERED AI CLIENTS</text>
+  <text x="696" y="130" fill="#F8FAFC" font-size="15" font-weight="700">MCP + Citation Skills</text>
+
+  <rect x="694" y="144" width="222" height="36" rx="8" fill="#0F172A" stroke="#334155"/>
+  <text x="706" y="166" fill="#E2E8F0" font-size="11.5" font-weight="600">Antigravity IDE Plugin</text>
+  <text x="844" y="166" fill="#5EEAD4" font-size="10">MCP+Skill</text>
+
+  <rect x="694" y="188" width="222" height="36" rx="8" fill="#0F172A" stroke="#334155"/>
+  <text x="706" y="210" fill="#E2E8F0" font-size="11.5" font-weight="600">Claude Code CLI</text>
+  <text x="844" y="210" fill="#5EEAD4" font-size="10">MCP+Skill</text>
+
+  <rect x="694" y="232" width="222" height="36" rx="8" fill="#0F172A" stroke="#334155"/>
+  <text x="706" y="254" fill="#E2E8F0" font-size="11.5" font-weight="600">VS Code Copilot / MCP</text>
+  <text x="844" y="254" fill="#5EEAD4" font-size="10">Provider</text>
+
+  <!-- Zotero Card -->
+  <rect x="678" y="304" width="254" height="108" rx="14" fill="#1F1629" stroke="#5B3678" stroke-width="1.5"/>
+  <text x="696" y="328" fill="#D8B4FE" font-size="11" font-weight="700" letter-spacing="0.08em">REFERENCE MANAGER (ZOTERO_DIR)</text>
+  <text x="696" y="348" fill="#F8FAFC" font-size="14" font-weight="700">Zotero Library</text>
+  <text x="696" y="369" fill="#CBD5E1" font-size="11.5">• zotero.sqlite (read-only copy)</text>
+  <text x="696" y="388" fill="#CBD5E1" font-size="11.5">• storage/ PDFs &amp; linked PDFs</text>
+  <text x="696" y="403" fill="#D8B4FE" font-size="10">Better BibTeX @citekey tags preserved</text>
+
+  <!-- Connectors -->
+  <!-- Bridge -> Data (read-only) -->
+  <path d="M280 308 C312 308, 312 356, 340 356" stroke="#FBBF24" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowAmber)"/>
+  <!-- Setup -> Runtime -->
+  <path d="M280 372 C310 372, 310 242, 340 242" stroke="#60A5FA" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <!-- Runtime <-> Data -->
+  <path d="M487 286 L487 302" stroke="#2DD4BF" stroke-width="2" marker-end="url(#arrowTeal)"/>
+  <!-- MCP -> AI Clients -->
+  <path d="M632 174 L676 174" stroke="#2DD4BF" stroke-width="2" marker-end="url(#arrowTeal)"/>
+  <!-- Zotero -> Zotero Sync -->
+  <path d="M678 340 C650 340, 650 174, 618 174" stroke="#D8B4FE" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arrowTeal)"/>
+</svg>

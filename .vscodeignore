@@ -9,3 +9,8 @@ build.mjs
 tsconfig.json
 package-lock.json
 *.vsix
+research-assistant/.venv/**
+research-assistant/data/**
+research-assistant/**/__pycache__/**
+research-assistant/**/*.pyc
+research-assistant/*.egg-info/**

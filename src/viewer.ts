@@ -77,6 +77,8 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
 
   resolveCustomEditor(document: vscode.CustomDocument, panel: vscode.WebviewPanel): void {
     const dist = vscode.Uri.joinPath(this.extensionUri, 'dist');
+    const logo = vscode.Uri.joinPath(this.extensionUri, 'assets', 'logo.svg');
+    panel.iconPath = logo;
     panel.webview.options = { enableScripts: true, localResourceRoots: [dist] };
     panel.webview.html = this.html(panel.webview, dist);
 
