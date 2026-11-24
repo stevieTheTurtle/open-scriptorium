@@ -67,13 +67,20 @@ export function venvPythonFor(installDir: string, platform: NodeJS.Platform = pr
     : path.join(installDir, '.venv', 'bin', 'python');
 }
 
-/** Finds OneDrive* folders under the user's home directory, if any. */
+/** Finds OneDrive* folders under the user's home directory, if any (follows Windows OneDrive junctions/reparse points). */
 export function findOneDriveDirs(homeDir: string = os.homedir()): string[] {
   try {
     return fs
-      .readdirSync(homeDir, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && /^OneDrive/i.test(d.name))
-      .map((d) => path.join(homeDir, d.name))
+      .readdirSync(homeDir)
+      .filter((name) => /^OneDrive/i.test(name))
+      .map((name) => path.join(homeDir, name))
+      .filter((full) => {
+        try {
+          return fs.statSync(full).isDirectory();
+        } catch {
+          return false;
+        }
+      })
       .sort((a, b) => a.localeCompare(b));
   } catch {
     return [];
