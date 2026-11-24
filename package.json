@@ -1,7 +1,7 @@
 {
   "name": "open-latex-studio",
   "displayName": "Open LaTeX Studio",
-  "description": "LaTeX writing studio: compile with Tectonic, preview the PDF, jump between source and PDF, and verify citations with bundled Research Assistant MCP.",
+  "description": "LaTeX writing studio for VS Code & Antigravity: Tectonic builds, SyncTeX PDF preview, bundled Research Assistant MCP, Zotero sync, and verbatim citation verification.",
   "version": "0.1.0",
   "publisher": "open-latex-studio",
   "icon": "assets/icon.png",
@@ -19,7 +19,12 @@
     "latex",
     "tectonic",
     "synctex",
-    "pdf"
+    "pdf",
+    "zotero",
+    "mcp",
+    "citations",
+    "research-assistant",
+    "rag"
   ],
   "engines": {
     "vscode": "^1.99.0"

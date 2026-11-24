@@ -4,9 +4,9 @@
 
 # Open LaTeX Studio
 
-A LaTeX writing studio inside **VS Code** and **Antigravity IDE** with a bundled **Research Assistant** (local paper RAG, MCP server, Zotero sync, and citation evidence verification). Compile with [Tectonic](https://tectonic-typesetting.github.io/), read the PDF beside your source, jump between the two down to the exact word, and verify every citation against your Zotero library.
+A local LaTeX writing studio for **VS Code** and **Antigravity IDE** with a bundled **Research Assistant** — combining [Tectonic](https://tectonic-typesetting.github.io/) compilation, side-by-side PDF.js preview with exact-word SyncTeX, [Zotero](https://www.zotero.org/) library sync, a local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) paper knowledge base, and verbatim citation verification.
 
-> **New PC or AI Agent setting this up?** Read the complete end-to-end guide in **[SETUP.md](SETUP.md)** — it covers installing Open LaTeX Studio in VS Code / Antigravity, configuring the bundled Research Assistant MCP server, connecting Zotero, sharing your paper index across PCs, and both 1-click GUI and headless CLI/agent setup.
+> **New PC or AI Agent setting this up?** Read the complete end-to-end guide in **[SETUP.md](SETUP.md)** — it covers installing Open LaTeX Studio in VS Code / Antigravity, connecting [Zotero](https://www.zotero.org/) (with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) `@citekey` support), configuring the bundled Research Assistant MCP server, sharing your paper index across PCs, and both 1-click GUI and headless CLI/agent setup.
 
 ## Architecture
 
@@ -22,9 +22,20 @@ A LaTeX writing studio inside **VS Code** and **Antigravity IDE** with a bundled
 
 ## Features
 
+**Bundled Research Assistant (MCP + Zotero + Citation Evidence)**
+
+- **Built-in [Zotero](https://www.zotero.org/) integration**: incrementally indexes PDF attachments (imported or linked) from a read-only snapshot of `zotero.sqlite` — preserving titles, authors, collections, tags, and [Better BibTeX](https://retorque.re/zotero-better-bibtex/) `@citekey` tags without ever locking or modifying your Zotero database. Supports on-demand sync or a background timer (`openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes`).
+- **Local [MCP](https://modelcontextprotocol.io/) paper knowledge base**: ships the full Research Assistant Python package (`research-assistant/` — hybrid SQLite FTS5 + ChromaDB semantic search via offline `sentence-transformers` or [Ollama](https://ollama.com/), plus optional arXiv search) and `citation-evidence` agent skill/rules (`agent-plugin/`).
+- **1-click multi-PC setup**: run `Open LaTeX Studio: Research Assistant: Set Up / Configure` from the Command Palette on any new PC. It creates a stable `~/.open-latex-studio/research-assistant/.venv`, connects to a local or cloud-synced `data/` index (e.g. OneDrive) and [Zotero](https://www.zotero.org/), and automatically registers:
+  - **Antigravity IDE** plugin (`~/.gemini/config/plugins/open-latex-studio-research/` — MCP server + `citation-evidence` skill + always-on rules + logo)
+  - **Claude Code CLI** (`~/.claude.json` user MCP server + `~/.claude/skills/citation-evidence/SKILL.md`)
+  - **VS Code** (`mcpServerDefinitionProviders` + user `mcp.json`)
+- **Automatic PDF citation verification**: a stdlib-only citation bridge matches `.bib` entries against your Zotero index and highlights citations in the PDF preview — **Verified** (with verbatim quote + page tooltips from `references.notes.json`), **Second-hand (yellow)** with extracted citing phrases from papers in your library, and **Unverified (red)**.
+- **Local Web UI & CLI**: launch the Research Assistant Web UI (`http://127.0.0.1:8000`) directly from the Command Palette or LaTeX toolbar to upload PDFs, browse collections, edit tags, and test queries.
+
 **Compile**
 
-- Compiles on save, while you type, or only on request.
+- Compiles on save, while you type, or only on request with [Tectonic](https://tectonic-typesetting.github.io/).
 - One build at a time. Anything you ask for during a build is merged into a single follow-up, so no change is lost.
 - A failed build keeps the last good PDF on screen.
 - Errors, warnings and bad boxes appear in the Problems panel, on the right file and line. Warnings from inside packages stay in the log.
@@ -46,17 +57,7 @@ A LaTeX writing studio inside **VS Code** and **Antigravity IDE** with a bundled
 - Completion for `\cite`, `\ref` and `\begin`. Citations show author and year, and you can search by key, author or title.
 - Outline and breadcrumbs, nested by heading level.
 - Word count for the current file in the status bar, and a file-by-file report for the whole document. Text inside commands like `\textbf` counts; math and references do not.
-- Insert commands for bold, italic, math, citations, references, figures, tables and lists.
-
-**Bundled Research Assistant (MCP + Zotero + Citation Evidence)**
-
-- Ships the full Research Assistant Python source (`research-assistant/`) and citation-evidence agent skill/rules (`agent-plugin/`) right inside the extension.
-- **1-click multi-PC setup**: run `Open LaTeX Studio: Research Assistant: Set Up / Configure` from the Command Palette on any new PC. It creates a stable `~/.open-latex-studio/research-assistant/.venv`, connects to a local or cloud-synced `data/` library (e.g. OneDrive) and Zotero `zotero.sqlite`, and automatically registers:
-  - **Antigravity IDE** plugin (`~/.gemini/config/plugins/open-latex-studio-research/` — MCP server + `citation-evidence` skill + always-on rules)
-  - **Claude Code CLI** (`~/.claude.json` user MCP server + `~/.claude/skills/citation-evidence/SKILL.md`)
-  - **VS Code** (`mcpServerDefinitionProviders` + user `mcp.json`)
-- **Built-in citation status checker**: automatically matches `.bib` entries against the Research Assistant SQLite index (green / yellow second-hand citing quotes / red unverified boxes in the PDF viewer) without any per-project wrapper script.
-- **Zotero sync & Web UI**: run incremental Zotero sync on demand or on a background timer (`openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes`), and launch the Research Assistant Web UI from the Command Palette.
+- Insert commands for bold, italic, math, citations, references, figures, tables and lists, plus a dedicated **Research Assistant** menu on the LaTeX editor toolbar.
 
 ## Getting started
 
@@ -68,10 +69,11 @@ You need:
 
 - VS Code 1.99+ or Antigravity IDE
 - [Tectonic](https://tectonic-typesetting.github.io/book/latest/installation/), on your `PATH` or set in `openLatexStudio.tectonicPath`
-- Python 3.10+ (for the bundled Research Assistant & citation verification)
-- [Node.js](https://nodejs.org/) LTS (only if building the `.vsix` from source)
+- Python 3.10+ (for the bundled Research Assistant MCP & citation verification)
+- [Zotero](https://www.zotero.org/) *(optional, recommended — with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) for `@citekey` matching)*
+- [Node.js](https://nodejs.org/) LTS *(only if building the `.vsix` from source)*
 
-Build and package:
+Install the latest `.vsix` from **[Releases](https://github.com/stevieTheTurtle/open-latex-studio/releases)** (or build from source below):
 
 ```bash
 git clone https://github.com/stevieTheTurtle/open-latex-studio.git
@@ -128,17 +130,20 @@ The default output folder ignores itself in Git, so build files stay out of your
 
 ## Security and privacy
 
-- Compiling only runs in [trusted workspaces](https://code.visualstudio.com/docs/editor/workspace-trust). In other workspaces you can still view PDFs.
+- Compiling and Research Assistant scripts only run in [trusted workspaces](https://code.visualstudio.com/docs/editor/workspace-trust). In other workspaces you can still view PDFs.
 - Tectonic always runs with `--untrusted`, which keeps shell-escape off whatever the document asks for.
-- There is no local server and no open port. The preview talks to the extension through VS Code's own messaging.
-- The extension collects no telemetry. Tectonic itself downloads TeX packages from its bundle server when it needs them.
+- The PDF preview runs with no open port — it talks to the extension through VS Code's own messaging. The optional Research Assistant Web UI binds to `127.0.0.1` only.
+- Your paper index (`metadata.db` and ChromaDB vectors) stays 100% local, and Zotero sync always reads a temporary snapshot copy of `zotero.sqlite` so your live [Zotero](https://www.zotero.org/) database is never locked or modified.
+- The extension collects no telemetry. Tectonic downloads TeX packages from its bundle server on demand, and optional arXiv search is disabled until toggled on in the Research Assistant Web UI.
 
 ## Roadmap
 
-- Citation evidence: hover a citation in the PDF or the source to see the passage that backs it, with optional markers for references you haven't verified
-- Automatic Tectonic installation on first use
-- Packaged `.vsix` releases, then the VS Code Marketplace and Open VSX
-- Tested on macOS and Linux
+- [x] Citation evidence: hover a citation in the PDF to see verbatim quotes, second-hand citing phrases, and Zotero verification markers
+- [x] Bundled Research Assistant MCP server, Zotero sync, and 1-click multi-PC setup
+- [x] Packaged `.vsix` releases
+- [ ] Automatic Tectonic installation on first use
+- [ ] VS Code Marketplace and Open VSX publishing
+- [ ] Full macOS and Linux verification
 
 ## Development
 
@@ -173,4 +178,4 @@ The build uses PDF.js's legacy bundle on purpose: the modern one needs browser f
 
 ## License
 
-[MIT](LICENSE). The extension bundles [PDF.js](https://github.com/mozilla/pdf.js), licensed under Apache-2.0. [Tectonic](https://github.com/tectonic-typesetting/tectonic) is MIT-licensed and installed separately.
+[MIT](LICENSE). The extension bundles [PDF.js](https://github.com/mozilla/pdf.js) (Apache-2.0) and the Research Assistant Python package. [Tectonic](https://github.com/tectonic-typesetting/tectonic) (MIT) and [Zotero](https://www.zotero.org/) (AGPL-3.0) are installed separately.
