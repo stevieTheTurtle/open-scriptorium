@@ -1,9 +1,9 @@
-# Open LaTeX Studio + Research Assistant — Complete Setup Guide (Users & AI Agents)
+# Open Scriptorium + Research Assistant — Complete Setup Guide (Users & AI Agents)
 
-This guide explains how to set up **everything** in **Open LaTeX Studio** on a new PC — both interactively (for human users in **VS Code** / **Antigravity IDE**) and non-interactively (for **AI agents** setting up a fresh machine from the terminal).
+This guide explains how to set up **everything** in **Open Scriptorium** on a new PC — both interactively (for human users in **VS Code** / **Antigravity IDE**) and non-interactively (for **AI agents** setting up a fresh machine from the terminal).
 
 It covers:
-1. The **Open LaTeX Studio** extension (Tectonic LaTeX compiler, PDF.js preview, two-way SyncTeX, citation tooltips).
+1. The **Open Scriptorium** extension (Tectonic LaTeX compiler, PDF.js preview, two-way SyncTeX, citation tooltips).
 2. The bundled **Research Assistant** system (local paper RAG database, **MCP server**, **Zotero library sync**, **Web UI / REST API**, **citation status verification**, and **agent citation-evidence skill & rules**).
 
 ---
@@ -11,11 +11,11 @@ It covers:
 ## Architecture Overview
 
 <p align="center">
-  <img src="assets/architecture.png" alt="Open LaTeX Studio and Research Assistant architecture" width="100%" />
+  <img src="assets/architecture.png" alt="Open Scriptorium and Research Assistant architecture" width="100%" />
 </p>
 
 ```text
-open-latex-studio (VS Code / Antigravity extension)
+open-scriptorium (VS Code / Antigravity extension)
 ├── dist/                      Compiled extension + PDF.js viewer
 ├── research-assistant/        Bundled Python source (~160 KB; no .venv or data/)
 │   ├── core/                  SQLite FTS5 + ChromaDB + sentence-transformers/Ollama
@@ -30,7 +30,7 @@ open-latex-studio (VS Code / Antigravity extension)
     └── rules/AGENTS.md
 
 Runtime state on each PC (kept outside the extension folder so upgrades never wipe it):
-~/.open-latex-studio/research-assistant/
+~/.open-scriptorium/research-assistant/
 ├── .venv/                     Machine-local Python virtual environment (NEVER cloud-sync)
 ├── config.yaml                Embedding provider (sentence_transformers or ollama) + port
 ├── ra / ra-ui / ra-mcp / ra-zotero-sync   Launcher scripts
@@ -42,7 +42,7 @@ Runtime state on each PC (kept outside the extension folder so upgrades never wi
 ```
 
 ### Key Portability Principle (Multi-PC Setup)
-- **Never share `.venv/` across PCs** (OS/Python paths differ). Each PC creates its own `.venv` at `~/.open-latex-studio/research-assistant/.venv`.
+- **Never share `.venv/` across PCs** (OS/Python paths differ). Each PC creates its own `.venv` at `~/.open-scriptorium/research-assistant/.venv`.
 - **You CAN share `data/` and Zotero** across PCs (for example via OneDrive, Dropbox, or Syncthing, e.g. `~/OneDrive - <Org>/ZoteroDocuments/ResearchAssistant/data`).
 - **CRITICAL if sharing `data/` across PCs:** every PC sharing the same `chroma/` vector store **must use the same embedding provider and model** in `config.yaml` (e.g., all PCs use `ollama` + `nomic-embed-text`, OR all PCs use `sentence_transformers` + `all-MiniLM-L6-v2`). Mixing providers causes vector dimension mismatches unless you re-embed (`scripts/reembed.py`).
 
@@ -62,44 +62,44 @@ Runtime state on each PC (kept outside the extension folder so upgrades never wi
 
 ---
 
-## Part 1: Install Open LaTeX Studio (VS Code / Antigravity IDE)
+## Part 1: Install Open Scriptorium (VS Code / Antigravity IDE)
 
 ### Option A — Install from a `.vsix` file (fastest)
-1. Get `open-latex-studio-<version>.vsix` (built via Option B or downloaded from releases).
+1. Get `open-scriptorium-<version>.vsix` (built via Option B or downloaded from releases).
 2. Install it:
-   - **GUI (VS Code & Antigravity IDE):** Open the **Extensions** view (`Ctrl+Shift+X`) → click **`...`** (top-right) → **Install from VSIX...** → select `open-latex-studio-0.1.0.vsix`.
+   - **GUI (VS Code & Antigravity IDE):** Open the **Extensions** view (`Ctrl+Shift+X`) → click **`...`** (top-right) → **Install from VSIX...** → select `open-scriptorium-0.1.0.vsix`.
    - **VS Code CLI:**
      ```bash
-     code --install-extension /path/to/open-latex-studio-0.1.0.vsix
+     code --install-extension /path/to/open-scriptorium-0.1.0.vsix
      ```
 
 ### Option B — Build & package from source
 ```bash
-git clone https://github.com/stevieTheTurtle/open-latex-studio.git
-cd open-latex-studio
+git clone https://github.com/stevieTheTurtle/open-scriptorium.git
+cd open-scriptorium
 npm ci
 npm run build
 npm test
 npx --yes @vscode/vsce package --no-dependencies
 ```
-This produces `open-latex-studio-0.1.0.vsix` in the repo root. Install it using Option A.
+This produces `open-scriptorium-0.1.0.vsix` in the repo root. Install it using Option A.
 
 ### Configure a LaTeX workspace (`.vscode/settings.json`)
 Add only the settings your project needs (all paths are relative to the workspace root):
 
 ```json
 {
-  "openLatexStudio.mainFile": "01_Thesis/main.tex",
-  "openLatexStudio.outDir": ".latex-studio/build",
-  "openLatexStudio.copyPdfTo": "thesis.pdf",
-  "openLatexStudio.tectonicPath": "",
-  "openLatexStudio.compile.trigger": "save",
-  "openLatexStudio.citations.notesFile": "01_Thesis_meta/references.notes.json"
+  "openScriptorium.mainFile": "01_Thesis/main.tex",
+  "openScriptorium.outDir": ".scriptorium/build",
+  "openScriptorium.copyPdfTo": "thesis.pdf",
+  "openScriptorium.tectonicPath": "",
+  "openScriptorium.compile.trigger": "save",
+  "openScriptorium.citations.notesFile": "01_Thesis_meta/references.notes.json"
 }
 ```
 
-- Leave `openLatexStudio.tectonicPath` empty if `tectonic` is on your `PATH` (otherwise point to `tectonic.exe` / `tectonic`).
-- Leave `openLatexStudio.citations.statusCommand` **empty** — v0.1.0+ runs the bundled `citation_status.py` bridge automatically whenever a Research Assistant `metadata.db` is detected.
+- Leave `openScriptorium.tectonicPath` empty if `tectonic` is on your `PATH` (otherwise point to `tectonic.exe` / `tectonic`).
+- Leave `openScriptorium.citations.statusCommand` **empty** — v0.1.0+ runs the bundled `citation_status.py` bridge automatically whenever a Research Assistant `metadata.db` is detected.
 - Open any `.tex` file and press **`Ctrl+Enter`** (`Cmd+Enter` on macOS) to compile and open the PDF preview.
 
 ---
@@ -109,26 +109,26 @@ Add only the settings your project needs (all paths are relative to the workspac
 Inside **VS Code** or **Antigravity IDE**:
 
 1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`).
-2. Run: **`Open LaTeX Studio: Research Assistant: Set Up / Configure`**.
+2. Run: **`Open Scriptorium: Research Assistant: Set Up / Configure`**.
 3. Follow the 5 quick prompts:
    1. **Python 3.10+**: auto-detected (or browse/enter path).
-   2. **Data Directory (`RA_DATA_DIR`)**: auto-detects an existing cloud-synced index (e.g. `OneDrive*/ZoteroDocuments/ResearchAssistant/data`) or lets you pick `~/.open-latex-studio/research-assistant/data` / browse.
+   2. **Data Directory (`RA_DATA_DIR`)**: auto-detects an existing cloud-synced index (e.g. `OneDrive*/ZoteroDocuments/ResearchAssistant/data`) or lets you pick `~/.open-scriptorium/research-assistant/data` / browse.
    3. **Zotero Folder (`ZOTERO_DIR`)**: auto-detects `zotero.sqlite` in `OneDrive*/ZoteroDocuments` or `~/Zotero` (or browse / skip).
    4. **Embedding Provider**: pick `sentence_transformers` (fully offline, default) or `ollama` (`nomic-embed-text`, pre-filled from an existing `config.yaml` if detected).
    5. **AI Clients to Register**: multi-select any combination of:
-      - **Antigravity IDE** — creates the plugin `~/.gemini/config/plugins/open-latex-studio-research/` (MCP server + `citation-evidence` skill + always-on rules)
+      - **Antigravity IDE** — creates the plugin `~/.gemini/config/plugins/open-scriptorium-research/` (MCP server + `citation-evidence` skill + always-on rules)
       - **Claude Code CLI** — adds `research-assistant` to `~/.claude.json` + installs `~/.claude/skills/citation-evidence/SKILL.md`
       - **VS Code** — writes VS Code user `mcp.json` + enables the built-in `mcpServerDefinitionProviders` contribution
 4. Wait for `.venv` creation and dependency installation (first run takes 1–4 min; `uv` makes it much faster).
 5. When prompted, click **Sync Zotero Now** (if you use Zotero) and restart Antigravity / Claude Code / VS Code if they were already running so they load the new MCP server.
 
 ### Everyday Commands (Command Palette)
-- `Open LaTeX Studio: Research Assistant: Status & Actions` — health check dashboard + quick actions
-- `Open LaTeX Studio: Research Assistant: Sync Zotero Library` — incremental sync of new/updated Zotero PDFs + refreshes PDF citation highlights
-- `Open LaTeX Studio: Research Assistant: Open Web UI` — launches and opens `http://127.0.0.1:8000`
-- `Open LaTeX Studio: Research Assistant: Register MCP & Skills` — re-writes MCP & skill configs without touching `.venv`
-- `Open LaTeX Studio: Research Assistant: Install Citation Rules in Workspace` — copies `.agents/skills/citation-evidence/SKILL.md` and `.agents/rules/citation-evidence.md` into the current repo
-- `Open LaTeX Studio: Refresh Citation Status` — manually re-checks `.bib` entries against `metadata.db`
+- `Open Scriptorium: Research Assistant: Status & Actions` — health check dashboard + quick actions
+- `Open Scriptorium: Research Assistant: Sync Zotero Library` — incremental sync of new/updated Zotero PDFs + refreshes PDF citation highlights
+- `Open Scriptorium: Research Assistant: Open Web UI` — launches and opens `http://127.0.0.1:8000`
+- `Open Scriptorium: Research Assistant: Register MCP & Skills` — re-writes MCP & skill configs without touching `.venv`
+- `Open Scriptorium: Research Assistant: Install Citation Rules in Workspace` — copies `.agents/skills/citation-evidence/SKILL.md` and `.agents/rules/citation-evidence.md` into the current repo
+- `Open Scriptorium: Refresh Citation Status` — manually re-checks `.bib` entries against `metadata.db`
 
 ---
 
@@ -137,21 +137,21 @@ Inside **VS Code** or **Antigravity IDE**:
 > **Instructions for AI Agents:** If you are setting up a new machine without clicking VS Code QuickPick dialogs, execute the steps below in order. Replace `<HOME>`, `<EXT_DIR>`, `<DATA_DIR>`, and `<ZOTERO_DIR>` with the machine's actual paths.
 
 ### Step 1 — Locate the bundled source
-Either from a git clone of `open-latex-studio` or from an installed `.vsix` extension directory:
+Either from a git clone of `open-scriptorium` or from an installed `.vsix` extension directory:
 - Git clone: `<REPO>/research-assistant` and `<REPO>/agent-plugin`
-- Installed Antigravity extension: `<HOME>/.antigravity-ide/extensions/open-latex-studio.open-latex-studio-*/`
-- Installed VS Code extension: `<HOME>/.vscode/extensions/open-latex-studio.open-latex-studio-*/`
+- Installed Antigravity extension: `<HOME>/.antigravity-ide/extensions/open-scriptorium.open-scriptorium-*/`
+- Installed VS Code extension: `<HOME>/.vscode/extensions/open-scriptorium.open-scriptorium-*/`
 
 Set `INSTALL_DIR`:
-- Windows: `C:\Users\<USER>\.open-latex-studio\research-assistant`
-- macOS/Linux: `$HOME/.open-latex-studio/research-assistant`
+- Windows: `C:\Users\<USER>\.open-scriptorium\research-assistant`
+- macOS/Linux: `$HOME/.open-scriptorium/research-assistant`
 
 ### Step 2 — Copy Python source into `INSTALL_DIR` and create `.venv`
 
 **Windows (PowerShell):**
 ```powershell
-$Repo = "C:\path\to\open-latex-studio"
-$InstallDir = "$HOME\.open-latex-studio\research-assistant"
+$Repo = "C:\path\to\open-scriptorium"
+$InstallDir = "$HOME\.open-scriptorium\research-assistant"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 foreach ($sub in @("core","mcp_server","api","cli","ui","scripts")) {
   Copy-Item -Recurse -Force "$Repo\research-assistant\$sub" "$InstallDir\$sub"
@@ -171,8 +171,8 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
 
 **macOS / Linux (Bash):**
 ```bash
-REPO="/path/to/open-latex-studio"
-INSTALL_DIR="$HOME/.open-latex-studio/research-assistant"
+REPO="/path/to/open-scriptorium"
+INSTALL_DIR="$HOME/.open-scriptorium/research-assistant"
 mkdir -p "$INSTALL_DIR"
 for sub in core mcp_server api cli ui scripts; do
   cp -R "$REPO/research-assistant/$sub" "$INSTALL_DIR/$sub"
@@ -241,17 +241,17 @@ Use these exact env vars for all MCP client registrations:
 *(Omit `ZOTERO_DIR` if Zotero is not installed on this PC.)*
 
 #### A. Antigravity IDE (Native Plugin — auto-discovered & enabled by default)
-Create `<HOME>/.gemini/config/plugins/open-latex-studio-research/` with 4 files:
+Create `<HOME>/.gemini/config/plugins/open-scriptorium-research/` with 4 files:
 
 1. `plugin.json`:
    ```json
    {
-     "name": "Open LaTeX Studio Research Assistant",
-     "description": "Local paper library MCP server and citation evidence workflow bundled with Open LaTeX Studio.",
+     "name": "Open Scriptorium Research Assistant",
+     "description": "Local paper library MCP server and citation evidence workflow bundled with Open Scriptorium.",
      "version": "0.1.0",
      "repository": {
        "type": "git",
-       "url": "https://github.com/stevieTheTurtle/open-latex-studio.git"
+       "url": "https://github.com/stevieTheTurtle/open-scriptorium.git"
      }
    }
    ```
@@ -318,17 +318,17 @@ Under `servers["research-assistant"]` (**preserve all other keys**):
   }
 }
 ```
-*(In VS Code 1.101+, Open LaTeX Studio also registers the MCP server automatically via `vscode.lm.registerMcpServerDefinitionProvider`.)*
+*(In VS Code 1.101+, Open Scriptorium also registers the MCP server automatically via `vscode.lm.registerMcpServerDefinitionProvider`.)*
 
 ### Step 5 — Configure VS Code / Antigravity User Settings
 In User `settings.json`, set:
 ```json
 {
-  "openLatexStudio.researchAssistant.enabled": true,
-  "openLatexStudio.researchAssistant.dataDir": "<DATA_DIR>",
-  "openLatexStudio.researchAssistant.zoteroDir": "<ZOTERO_DIR>",
-  "openLatexStudio.researchAssistant.collection": "Zotero",
-  "openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes": 30
+  "openScriptorium.researchAssistant.enabled": true,
+  "openScriptorium.researchAssistant.dataDir": "<DATA_DIR>",
+  "openScriptorium.researchAssistant.zoteroDir": "<ZOTERO_DIR>",
+  "openScriptorium.researchAssistant.collection": "Zotero",
+  "openScriptorium.researchAssistant.zoteroSyncIntervalMinutes": 30
 }
 ```
 
@@ -345,7 +345,7 @@ In User `settings.json`, set:
   RA_DATA_DIR="<DATA_DIR>" RA_CONFIG_PATH="<INSTALL_DIR>/config.yaml" PYTHONPATH="<INSTALL_DIR>" \
     "<VENV_PYTHON>" "<INSTALL_DIR>/scripts/zotero_sync.py" --zotero-dir "<ZOTERO_DIR>" --set-active
   ```
-- Run automatically: set `"openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes": 30` in VS Code / Antigravity settings (or schedule `ra-zotero-sync.bat` / `ra-zotero-sync` in Windows Task Scheduler / `cron` if you want sync even when the editor is closed).
+- Run automatically: set `"openScriptorium.researchAssistant.zoteroSyncIntervalMinutes": 30` in VS Code / Antigravity settings (or schedule `ra-zotero-sync.bat` / `ra-zotero-sync` in Windows Task Scheduler / `cron` if you want sync even when the editor is closed).
 
 ### How Citation Evidence & Verification Works in the PDF Viewer
 
@@ -354,7 +354,7 @@ In User `settings.json`, set:
 </p>
 
 1. **Evidence notes (`references.notes.json`)**:
-   Configure `openLatexStudio.citations.notesFile` (e.g. `01_Thesis_meta/references.notes.json`) or place `<name>.notes.json` next to `<name>.bib`. Format:
+   Configure `openScriptorium.citations.notesFile` (e.g. `01_Thesis_meta/references.notes.json`) or place `<name>.notes.json` next to `<name>.bib`. Format:
    ```json
    {
      "vaswani2017attention": [
@@ -369,7 +369,7 @@ In User `settings.json`, set:
      ]
    }
    ```
-   Hovering a citation in the Open LaTeX Studio PDF preview displays its metadata plus the verbatim quote and page matching the `.tex` file the citation came from.
+   Hovering a citation in the Open Scriptorium PDF preview displays its metadata plus the verbatim quote and page matching the `.tex` file the citation came from.
 
 2. **Automatic library verification (`citation_status.py`)**:
    - Uses **Python stdlib only** (`sqlite3` read-only — works even without `.venv`).
@@ -379,7 +379,7 @@ In User `settings.json`, set:
      - **Red box (unverified)**: nothing in the library mentions the paper.
 
 ### Research Assistant Web UI & CLI
-- **Web UI**: Run `Open LaTeX Studio: Research Assistant: Open Web UI` (or `ra-ui.bat` / `./ra-ui`) → `http://127.0.0.1:8000` to drag-drop PDFs, browse collections, edit tags, toggle arXiv search, and test search queries.
+- **Web UI**: Run `Open Scriptorium: Research Assistant: Open Web UI` (or `ra-ui.bat` / `./ra-ui`) → `http://127.0.0.1:8000` to drag-drop PDFs, browse collections, edit tags, toggle arXiv search, and test search queries.
 - **REST API** (on the same port): `POST /api/search`, `GET /api/papers`, `GET /api/papers/{id}`, `POST /api/papers/upload`, `DELETE /api/papers/{id}`.
 - **CLI**: `ra search "query"`, `ra list`, `ra add paper.pdf --tags foo`, `ra status`.
 
@@ -423,6 +423,6 @@ Run these checks after setup on a new PC:
 - **MCP server slow on first query (~5–10s)**: Normal — `mcp_server` pre-warms the embedding model once at startup; subsequent calls take <1s.
 - **Yellow/red citation boxes don't appear in PDF**:
   1. Confirm the workspace is **trusted** (`Workspace Trust`).
-  2. Run `Open LaTeX Studio: Research Assistant: Status & Actions` to verify `metadata.db` is found.
-  3. Run `Open LaTeX Studio: Refresh Citation Status`.
-- **Upgrading Open LaTeX Studio**: Simply install the newer `.vsix`. On activation, the extension automatically updates the Python source files inside `~/.open-latex-studio/research-assistant/` while keeping your `.venv`, `config.yaml`, `data/`, and MCP registrations intact.
+  2. Run `Open Scriptorium: Research Assistant: Status & Actions` to verify `metadata.db` is found.
+  3. Run `Open Scriptorium: Refresh Citation Status`.
+- **Upgrading Open Scriptorium**: Simply install the newer `.vsix`. On activation, the extension automatically updates the Python source files inside `~/.open-scriptorium/research-assistant/` while keeping your `.venv`, `config.yaml`, `data/`, and MCP registrations intact.

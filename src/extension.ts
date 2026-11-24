@@ -37,7 +37,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
   });
 
-  const status = (text: string) => vscode.window.setStatusBarMessage(`Open LaTeX Studio: ${text}`, 4000);
+  const status = (text: string) => vscode.window.setStatusBarMessage(`Open Scriptorium: ${text}`, 4000);
 
   async function compile(options: { clean?: boolean }) {
     const finished = await session.request({ document: vscode.window.activeTextEditor?.document, manual: true, ...options });
@@ -184,19 +184,19 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         void pushCitationsToAll(true);
       }
     }),
-    vscode.commands.registerCommand('openLatexStudio.compile', () => compile({})),
-    vscode.commands.registerCommand('openLatexStudio.compileClean', () => compile({ clean: true })),
-    vscode.commands.registerCommand('openLatexStudio.openPreview', openPreview),
-    vscode.commands.registerCommand('openLatexStudio.syncToPdf', syncToPdf),
-    vscode.commands.registerCommand('openLatexStudio.syncToCode', syncToCode),
-    vscode.commands.registerCommand('openLatexStudio.showLog', () => session.showLog()),
-    vscode.commands.registerCommand('openLatexStudio.refreshCitationStatus', refreshCitationStatus),
-    vscode.commands.registerCommand('openLatexStudio.researchAssistant.setup', () => researchAssistant.setupWizard()),
-    vscode.commands.registerCommand('openLatexStudio.researchAssistant.status', () => researchAssistant.showStatus()),
-    vscode.commands.registerCommand('openLatexStudio.researchAssistant.syncZotero', () => researchAssistant.syncZotero(false)),
-    vscode.commands.registerCommand('openLatexStudio.researchAssistant.openWebUi', () => researchAssistant.openWebUi()),
-    vscode.commands.registerCommand('openLatexStudio.researchAssistant.registerClients', () => researchAssistant.registerClientsInteractive()),
-    vscode.commands.registerCommand('openLatexStudio.researchAssistant.installWorkspaceSkill', () => researchAssistant.installWorkspaceSkill()),
+    vscode.commands.registerCommand('openScriptorium.compile', () => compile({})),
+    vscode.commands.registerCommand('openScriptorium.compileClean', () => compile({ clean: true })),
+    vscode.commands.registerCommand('openScriptorium.openPreview', openPreview),
+    vscode.commands.registerCommand('openScriptorium.syncToPdf', syncToPdf),
+    vscode.commands.registerCommand('openScriptorium.syncToCode', syncToCode),
+    vscode.commands.registerCommand('openScriptorium.showLog', () => session.showLog()),
+    vscode.commands.registerCommand('openScriptorium.refreshCitationStatus', refreshCitationStatus),
+    vscode.commands.registerCommand('openScriptorium.researchAssistant.setup', () => researchAssistant.setupWizard()),
+    vscode.commands.registerCommand('openScriptorium.researchAssistant.status', () => researchAssistant.showStatus()),
+    vscode.commands.registerCommand('openScriptorium.researchAssistant.syncZotero', () => researchAssistant.syncZotero(false)),
+    vscode.commands.registerCommand('openScriptorium.researchAssistant.openWebUi', () => researchAssistant.openWebUi()),
+    vscode.commands.registerCommand('openScriptorium.researchAssistant.registerClients', () => researchAssistant.registerClientsInteractive()),
+    vscode.commands.registerCommand('openScriptorium.researchAssistant.installWorkspaceSkill', () => researchAssistant.installWorkspaceSkill()),
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (session.savingForBuild || !LATEX_FILE.test(document.fileName) || trigger(document) !== 'save') return;
       scheduleBuild(document, SAVE_DEBOUNCE_MS);

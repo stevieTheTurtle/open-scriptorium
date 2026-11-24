@@ -19,7 +19,7 @@ New-Item -ItemType Directory -Force $WorkDir | Out-Null
 $source = if ($Mode -eq 'fixture') { Join-Path $repo 'test\e2e\fixture' } else { $Project }
 Copy-Item $source $workspace -Recurse
 New-Item -ItemType Directory -Force (Join-Path $workspace '.vscode') | Out-Null
-$settings = @{ 'openLatexStudio.tectonicPath' = $Tectonic; 'openLatexStudio.compile.trigger' = 'off'; 'openLatexStudio.mainFile' = 'main.tex' }
+$settings = @{ 'openScriptorium.tectonicPath' = $Tectonic; 'openScriptorium.compile.trigger' = 'off'; 'openScriptorium.mainFile' = 'main.tex' }
 [System.IO.File]::WriteAllText((Join-Path $workspace '.vscode\settings.json'), ($settings | ConvertTo-Json), $utf8)
 
 # A throwaway profile must not be able to update the installed editor.

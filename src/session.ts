@@ -48,8 +48,8 @@ export class CompileSession implements vscode.Disposable {
   private readonly finished = new vscode.EventEmitter<FinishedCompile>();
   readonly onDidFinish = this.finished.event;
 
-  private readonly output = vscode.window.createOutputChannel('Open LaTeX Studio');
-  private readonly diagnostics = vscode.languages.createDiagnosticCollection('openLatexStudio');
+  private readonly output = vscode.window.createOutputChannel('Open Scriptorium');
+  private readonly diagnostics = vscode.languages.createDiagnosticCollection('openScriptorium');
   private readonly status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
   private readonly abort = new AbortController();
 
@@ -61,7 +61,7 @@ export class CompileSession implements vscode.Disposable {
   constructor(projects: ProjectResolver, viewer: PdfViewer) {
     this.projects = projects;
     this.viewer = viewer;
-    this.status.command = 'openLatexStudio.compile';
+    this.status.command = 'openScriptorium.compile';
     this.status.text = '$(play) LaTeX';
     this.status.tooltip = 'Compile the document';
     this.status.show();
@@ -113,12 +113,12 @@ export class CompileSession implements vscode.Disposable {
   private async build(options: CompileOptions): Promise<FinishedCompile | undefined> {
     const manual = options.manual ?? false;
     if (!vscode.workspace.isTrusted) {
-      if (manual) void vscode.window.showWarningMessage('Open LaTeX Studio only compiles in trusted workspaces.');
+      if (manual) void vscode.window.showWarningMessage('Open Scriptorium only compiles in trusted workspaces.');
       return undefined;
     }
     const project = await this.projects.resolve(options.document, manual);
     if (!project) {
-      if (manual) void vscode.window.showWarningMessage('Open LaTeX Studio: no main LaTeX file found. Set "openLatexStudio.mainFile".');
+      if (manual) void vscode.window.showWarningMessage('Open Scriptorium: no main LaTeX file found. Set "openScriptorium.mainFile".');
       return undefined;
     }
     const executable = this.findTectonic(project);
@@ -159,7 +159,7 @@ export class CompileSession implements vscode.Disposable {
     if (result.success) await this.viewer.refresh(vscode.Uri.file(project.pdfPath));
     if (manual && !result.success) {
       await vscode.commands.executeCommand('workbench.actions.view.problems');
-      if (result.error) void vscode.window.showErrorMessage(`Open LaTeX Studio: could not run Tectonic: ${result.error}`);
+      if (result.error) void vscode.window.showErrorMessage(`Open Scriptorium: could not run Tectonic: ${result.error}`);
     }
 
     const finished = { project, result, manual };
@@ -181,7 +181,7 @@ export class CompileSession implements vscode.Disposable {
     const openSettings = 'Open Settings';
     const install = 'How to Install';
     const choice = await vscode.window.showErrorMessage(
-      'Open LaTeX Studio could not find Tectonic. Install it, or set "openLatexStudio.tectonicPath".',
+      'Open Scriptorium could not find Tectonic. Install it, or set "openScriptorium.tectonicPath".',
       install,
       openSettings,
     );

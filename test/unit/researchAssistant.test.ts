@@ -40,7 +40,7 @@ test('resolveResearchAssistantPaths detects OneDrive Zotero and shared data dir'
     fs.writeFileSync(dbFile, '');
 
     assert.equal(detectZoteroDir(home), zoteroDir);
-    assert.equal(detectExistingDataDir(path.join(home, '.open-latex-studio', 'research-assistant'), home), dataDir);
+    assert.equal(detectExistingDataDir(path.join(home, '.open-scriptorium', 'research-assistant'), home), dataDir);
 
     const resolved = resolveResearchAssistantPaths({}, home, 'win32', {});
     assert.equal(resolved.dataDir, dataDir);

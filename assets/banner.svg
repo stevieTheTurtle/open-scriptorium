@@ -1,124 +1,147 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 340" fill="none" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" fill="none">
   <defs>
-    <linearGradient id="heroBg" x1="0" y1="0" x2="1200" y2="340" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#0B1220"/>
-      <stop offset="55%" stop-color="#111C33"/>
-      <stop offset="100%" stop-color="#0F2633"/>
+    <linearGradient id="paper" x1="0" y1="0" x2="1200" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FCF9F2"/>
+      <stop offset="100%" stop-color="#F3ECE0"/>
     </linearGradient>
-    <radialGradient id="glowTeal" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(950 90) rotate(130) scale(360 220)">
-      <stop offset="0%" stop-color="#2DD4BF" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#2DD4BF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="glowIndigo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(220 260) rotate(30) scale(380 200)">
-      <stop offset="0%" stop-color="#6366F1" stop-opacity="0.18"/>
-      <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="ribbon" x1="40" y1="20" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2DD4BF"/>
-      <stop offset="100%" stop-color="#0D9488"/>
+    <linearGradient id="cover" x1="10" y1="8" x2="118" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7A2230"/>
+      <stop offset="100%" stop-color="#4F141E"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E7C983"/>
+      <stop offset="100%" stop-color="#B58938"/>
     </linearGradient>
   </defs>
 
-  <rect width="1200" height="340" rx="22" fill="url(#heroBg)" stroke="#1E293B" stroke-width="1.5"/>
-  <rect width="1200" height="340" rx="22" fill="url(#glowTeal)"/>
-  <rect width="1200" height="340" rx="22" fill="url(#glowIndigo)"/>
+  <!-- Archival parchment sheet with classical double engraved border -->
+  <rect width="1200" height="360" rx="14" fill="url(#paper)"/>
+  <rect x="10" y="10" width="1180" height="340" rx="9" stroke="#C5B89E" stroke-width="1.5"/>
+  <rect x="16" y="16" width="1168" height="328" rx="6" stroke="#DFD5C0" stroke-width="1"/>
 
-  <!-- Brand emblem (left) -->
-  <g transform="translate(52, 68) scale(0.76)">
-    <rect x="4" y="4" width="120" height="120" rx="26" fill="#141E35" stroke="#334155" stroke-width="2.5"/>
-    <path d="M30 22h42l20 20v60a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8Z" fill="#F8FAFC"/>
-    <path d="M72 22v14a6 6 0 0 0 6 6h14L72 22Z" fill="#CBD5E1"/>
-    <path d="M36 22h14v34l-7-5.5L36 56V22Z" fill="url(#ribbon)"/>
-    <rect x="34" y="66" width="38" height="5.5" rx="2.75" fill="#475569"/>
-    <rect x="34" y="78" width="46" height="5.5" rx="2.75" fill="#64748B"/>
-    <rect x="34" y="90" width="28" height="5.5" rx="2.75" fill="#94A3B8"/>
-    <circle cx="90" cy="88" r="22" fill="#0F172A" stroke="#334155" stroke-width="2.5"/>
-    <path d="M81 94l9-14 10 11-19 3Z" stroke="#2DD4BF" stroke-width="2.4" stroke-linejoin="round"/>
-    <circle cx="90" cy="80" r="4.2" fill="#FBBF24"/>
-    <circle cx="81" cy="94" r="3.6" fill="#38BDF8"/>
-    <circle cx="100" cy="91" r="3.6" fill="#2DD4BF"/>
+  <!-- Subtle classical corner diamonds -->
+  <polygon points="28,28 33,23 38,28 33,33" fill="#B58938"/>
+  <polygon points="1162,28 1167,23 1172,28 1167,33" fill="#B58938"/>
+  <polygon points="28,332 33,327 38,332 33,337" fill="#B58938"/>
+  <polygon points="1162,332 1167,327 1172,332 1167,337" fill="#B58938"/>
+
+  <!-- LEFT EDITORIAL COLUMN -->
+  <!-- Book-plate emblem -->
+  <g transform="translate(52, 54) scale(0.76)">
+    <rect x="4" y="4" width="120" height="120" rx="22" fill="url(#cover)" stroke="#3B0E16" stroke-width="2"/>
+    <rect x="11" y="11" width="106" height="106" rx="16" stroke="url(#gold)" stroke-width="1.6" stroke-opacity="0.85"/>
+    <path d="M24 38 C39 32, 54 34, 64 40 L64 93 C54 87, 39 85, 24 91 Z" fill="#FAF6EC" stroke="#C7B89A" stroke-width="1.2"/>
+    <path d="M104 38 C89 32, 74 34, 64 40 L64 93 C74 87, 89 85, 104 91 Z" fill="#F2E9D7" stroke="#C7B89A" stroke-width="1.2"/>
+    <line x1="64" y1="40" x2="64" y2="93" stroke="#B6A586" stroke-width="1.4"/>
+    <rect x="31" y="47" width="10" height="11" rx="1.5" fill="#8B2635"/>
+    <path d="M34 55 L36 49.5 L38 55 M34.7 53.5 L37.3 53.5" stroke="#FAF6EE" stroke-width="1.3" stroke-linecap="round"/>
+    <line x1="44" y1="49" x2="57" y2="50.5" stroke="#6F6556" stroke-width="2" stroke-linecap="round"/>
+    <line x1="44" y1="55" x2="57" y2="56.5" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+    <line x1="31" y1="64" x2="57" y2="66" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+    <line x1="31" y1="71" x2="57" y2="73" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+    <line x1="71" y1="50.5" x2="96" y2="48.5" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+    <line x1="71" y1="57.5" x2="96" y2="55.5" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+    <rect x="71" y="72" width="19" height="4.5" rx="2" fill="#2E5A44"/>
+    <path d="M61 90 L67 90 L67 109 L64 104.5 L61 109 Z" fill="url(#gold)"/>
+    <g transform="translate(88, 33) rotate(36)">
+      <path d="M0 -18 C5 -9, 9 -1, 7 11 L-7 11 C-9 -1, -5 -9, 0 -18 Z" fill="#1E1A16" stroke="url(#gold)" stroke-width="1.5"/>
+      <line x1="0" y1="-16" x2="0" y2="-1" stroke="url(#gold)" stroke-width="1.3"/>
+      <circle cx="0" cy="-1" r="2.3" fill="url(#gold)"/>
+      <rect x="-7.5" y="10" width="15" height="4.5" rx="1.2" fill="url(#gold)"/>
+    </g>
   </g>
 
-  <!-- Title & subtitle -->
-  <text x="172" y="108" fill="#F8FAFC" font-size="38" font-weight="800" letter-spacing="-0.02em">Open LaTeX Studio</text>
-  <text x="174" y="140" fill="#94A3B8" font-size="16" font-weight="500">Local LaTeX Studio + Bundled Research Assistant MCP</text>
-  <text x="174" y="164" fill="#64748B" font-size="14">For VS Code · Antigravity IDE · Claude Code · Zotero</text>
+  <!-- Classical Serif Masthead -->
+  <text x="168" y="80" fill="#8B2635" font-family="Georgia, 'Times New Roman', serif" font-size="11.5" font-weight="700" letter-spacing="0.18em">FREE &amp; OPEN-SOURCE ACADEMIC WRITING STUDIO</text>
+  <text x="166" y="128" fill="#1C1917" font-family="Georgia, 'Palatino Linotype', 'Times New Roman', serif" font-size="44" font-weight="700" letter-spacing="-0.01em">Open Scriptorium</text>
 
-  <!-- Feature pills -->
-  <g transform="translate(54, 212)">
-    <rect x="0" y="0" width="114" height="32" rx="16" fill="#172540" stroke="#334155"/>
-    <circle cx="18" cy="16" r="4" fill="#38BDF8"/>
-    <text x="30" y="20.5" fill="#E2E8F0" font-size="12.5" font-weight="600">Tectonic</text>
+  <!-- Engraved rule -->
+  <line x1="56" y1="166" x2="588" y2="166" stroke="#C5B89E" stroke-width="1"/>
+  <polygon points="318,166 322,162 326,166 322,170" fill="#8B2635"/>
 
-    <rect x="126" y="0" width="154" height="32" rx="16" fill="#172540" stroke="#334155"/>
-    <circle cx="144" cy="16" r="4" fill="#818CF8"/>
-    <text x="156" y="20.5" fill="#E2E8F0" font-size="12.5" font-weight="600">PDF.js + SyncTeX</text>
+  <text x="56" y="198" fill="#3D3830" font-family="Georgia, 'Times New Roman', serif" font-size="15.5" font-style="italic">Local Tectonic typesetting, exact-word SyncTeX, and a bundled Zotero</text>
+  <text x="56" y="220" fill="#3D3830" font-family="Georgia, 'Times New Roman', serif" font-size="15.5" font-style="italic">Research Assistant that grounds every citation in verbatim evidence.</text>
 
-    <rect x="292" y="0" width="174" height="32" rx="16" fill="#102C36" stroke="#1E525E"/>
-    <circle cx="310" cy="16" r="4" fill="#2DD4BF"/>
-    <text x="322" y="20.5" fill="#99F6E4" font-size="12.5" font-weight="600">Research MCP</text>
+  <!-- Classical flat specimen tags -->
+  <g transform="translate(56, 250)" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600">
+    <rect x="0" y="0" width="108" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
+    <rect x="0" y="0" width="4" height="30" rx="2" fill="#2B4666"/>
+    <text x="15" y="19.5" fill="#1C1917">Tectonic TeX</text>
 
-    <rect x="0" y="44" width="144" height="32" rx="16" fill="#1F1629" stroke="#5B3678"/>
-    <circle cx="18" cy="60" r="4" fill="#C084FC"/>
-    <text x="30" y="64.5" fill="#E9D5FF" font-size="12.5" font-weight="600">Zotero Sync</text>
+    <rect x="120" y="0" width="136" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
+    <rect x="120" y="0" width="4" height="30" rx="2" fill="#2E5A44"/>
+    <text x="135" y="19.5" fill="#1C1917">PDF.js + SyncTeX</text>
 
-    <rect x="156" y="44" width="194" height="32" rx="16" fill="#251E0E" stroke="#78561F"/>
-    <circle cx="174" cy="60" r="4" fill="#FBBF24"/>
-    <text x="186" y="64.5" fill="#FDE68A" font-size="12.5" font-weight="600">Citation Evidence</text>
+    <rect x="268" y="0" width="130" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
+    <rect x="268" y="0" width="4" height="30" rx="2" fill="#8B2635"/>
+    <text x="283" y="19.5" fill="#1C1917">Zotero + MCP</text>
+
+    <rect x="410" y="0" width="122" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
+    <rect x="410" y="0" width="4" height="30" rx="2" fill="#9A6B1E"/>
+    <text x="425" y="19.5" fill="#1C1917">FOSS · MIT</text>
   </g>
+  <text x="56" y="314" fill="#7A7164" font-family="Georgia, 'Times New Roman', serif" font-size="12.5">For VS Code · Antigravity IDE · Claude Code · Local &amp; Cloud-Synced Libraries</text>
 
-  <!-- Right-side stylized IDE split-pane preview -->
-  <g transform="translate(650, 34)">
-    <!-- Window frame -->
-    <rect x="0" y="0" width="504" height="272" rx="14" fill="#0D1526" stroke="#334155" stroke-width="1.5"/>
-    <!-- Window bar -->
-    <rect x="0" y="0" width="504" height="32" rx="14" fill="#152038"/>
-    <rect x="0" y="18" width="504" height="14" fill="#152038"/>
-    <circle cx="18" cy="16" r="4.5" fill="#F87171"/>
-    <circle cx="34" cy="16" r="4.5" fill="#FBBF24"/>
-    <circle cx="50" cy="16" r="4.5" fill="#34D399"/>
-    <text x="74" y="20" fill="#94A3B8" font-size="11" font-weight="600">01_introduction.tex  |  thesis.pdf</text>
+  <!-- RIGHT EDITORIAL WORKBENCH SPREAD (Open Folio + Marginalia) -->
+  <g transform="translate(626, 40)">
+    <!-- Subtle book shadow -->
+    <rect x="6" y="8" width="522" height="278" rx="8" fill="#1C1917" fill-opacity="0.08"/>
+    <!-- Outer folio frame -->
+    <rect x="0" y="0" width="522" height="278" rx="8" fill="#FFFFFF" stroke="#C5B89E" stroke-width="1.3"/>
+    <!-- Running header bar -->
+    <rect x="0" y="0" width="522" height="30" rx="8" fill="#F2EBD9"/>
+    <rect x="0" y="20" width="522" height="10" fill="#F2EBD9"/>
+    <line x1="0" y1="30" x2="522" y2="30" stroke="#D7CCB6" stroke-width="1"/>
+    <text x="16" y="19.5" fill="#5E5548" font-family="Georgia, serif" font-size="10.5" font-weight="700" letter-spacing="0.08em">§  MANUSCRIPT SOURCE</text>
+    <text x="276" y="19.5" fill="#5E5548" font-family="Georgia, serif" font-size="10.5" font-weight="700" letter-spacing="0.08em">TYPESET FOLIO &amp; MARGINALIA</text>
+    <!-- Center book gutter -->
+    <line x1="258" y1="0" x2="258" y2="278" stroke="#D7CCB6" stroke-width="1.2"/>
 
-    <!-- Left pane: LaTeX code -->
-    <rect x="14" y="44" width="224" height="214" rx="8" fill="#09101D" stroke="#1E293B"/>
-    <text x="26" y="68" fill="#818CF8" font-size="11" font-family="ui-monospace, Consolas, monospace">\section{Introduction}</text>
-    <rect x="26" y="80" width="186" height="6" rx="3" fill="#334155"/>
-    <rect x="26" y="94" width="164" height="6" rx="3" fill="#334155"/>
-    <rect x="26" y="110" width="198" height="22" rx="5" fill="#14293D" stroke="#38BDF8" stroke-opacity="0.5"/>
-    <text x="34" y="125" fill="#7DD3FC" font-size="10.5" font-family="ui-monospace, Consolas, monospace">self-attention \cite{vaswani17}</text>
-    <rect x="26" y="142" width="176" height="6" rx="3" fill="#334155"/>
-    <rect x="26" y="156" width="190" height="6" rx="3" fill="#334155"/>
-    <rect x="26" y="170" width="142" height="6" rx="3" fill="#334155"/>
-    <rect x="26" y="196" width="196" height="48" rx="7" fill="#102826" stroke="#2DD4BF" stroke-opacity="0.45"/>
-    <text x="36" y="214" fill="#5EEAD4" font-size="10" font-weight="700">MCP: search_papers()</text>
-    <text x="36" y="231" fill="#94A3B8" font-size="9.5">→ Verbatim quote + [p.2] saved</text>
+    <!-- LEFT LEAF: LaTeX Source -->
+    <text x="18" y="54" fill="#8B2635" font-family="Consolas, 'Courier New', monospace" font-size="11" font-weight="700">\section{Introduction}</text>
+    <text x="18" y="75" fill="#5E5548" font-family="Consolas, 'Courier New', monospace" font-size="10">Modern sequence transduction</text>
+    <text x="18" y="91" fill="#5E5548" font-family="Consolas, 'Courier New', monospace" font-size="10">relies solely on attention</text>
+    <rect x="14" y="100" width="230" height="22" rx="3" fill="#EDF4EF" stroke="#2E5A44" stroke-opacity="0.45"/>
+    <text x="20" y="115" fill="#2E5A44" font-family="Consolas, 'Courier New', monospace" font-size="10" font-weight="700">mechanisms \cite{vaswani2017}.</text>
+    <text x="18" y="140" fill="#5E5548" font-family="Consolas, 'Courier New', monospace" font-size="10">Earlier studies of mind</text>
+    <text x="18" y="156" fill="#5E5548" font-family="Consolas, 'Courier New', monospace" font-size="10">perception \cite{gray2007} ...</text>
 
-    <!-- Right pane: PDF preview with citation highlights + tooltip -->
-    <rect x="252" y="44" width="238" height="214" rx="8" fill="#F8FAFC"/>
-    <rect x="270" y="62" width="128" height="9" rx="3" fill="#1E293B"/>
-    <rect x="270" y="82" width="196" height="5" rx="2.5" fill="#94A3B8"/>
-    <rect x="270" y="94" width="122" height="5" rx="2.5" fill="#94A3B8"/>
-    <!-- Emerald verified citation pill -->
-    <rect x="398" y="90" width="66" height="13" rx="4" fill="#D1FAE5" stroke="#10B981" stroke-width="1"/>
-    <text x="404" y="99.5" fill="#065F46" font-size="8" font-weight="700">[Vaswani 17]</text>
+    <!-- Scholarly MCP callout on left bottom -->
+    <rect x="16" y="184" width="226" height="76" rx="5" fill="#FAF6EE" stroke="#C5B89E"/>
+    <rect x="16" y="184" width="226" height="20" rx="5" fill="#EDE4D0"/>
+    <rect x="16" y="198" width="226" height="6" fill="#EDE4D0"/>
+    <text x="25" y="198" fill="#2B4666" font-family="Georgia, serif" font-size="9.5" font-weight="700" letter-spacing="0.06em">RESEARCH ASSISTANT · MCP</text>
+    <text x="25" y="221" fill="#1C1917" font-family="Consolas, monospace" font-size="9.5">search_papers("self-attention")</text>
+    <text x="25" y="238" fill="#2E5A44" font-family="Georgia, serif" font-size="10" font-style="italic">→ @vaswani2017 matched (p. 2)</text>
+    <text x="25" y="252" fill="#7A7164" font-family="Georgia, serif" font-size="9.5">Verbatim quote appended to notes</text>
 
-    <rect x="270" y="110" width="98" height="5" rx="2.5" fill="#94A3B8"/>
-    <!-- Amber second-hand pill -->
-    <rect x="374" y="106" width="54" height="13" rx="4" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>
-    <text x="380" y="115.5" fill="#92400E" font-size="8" font-weight="700">[Gray 07]</text>
+    <!-- RIGHT LEAF: Typeset Paper + Citation Marginalia Card -->
+    <text x="274" y="54" fill="#1C1917" font-family="Georgia, 'Times New Roman', serif" font-size="13.5" font-weight="700">1.  Introduction</text>
+    <text x="274" y="75" fill="#3D3830" font-family="Georgia, 'Times New Roman', serif" font-size="10.5">Modern sequence transduction relies</text>
+    <text x="274" y="92" fill="#3D3830" font-family="Georgia, 'Times New Roman', serif" font-size="10.5">solely on attention</text>
+    <!-- Sage Verified inline citation -->
+    <rect x="372" y="81" width="84" height="15" rx="2.5" fill="#EDF4EF" stroke="#2E5A44" stroke-width="0.9"/>
+    <text x="378" y="91.5" fill="#2E5A44" font-family="Georgia, serif" font-size="9" font-weight="700">[Vaswani 2017]</text>
 
-    <!-- Coral unverified pill -->
-    <rect x="434" y="106" width="42" height="13" rx="4" fill="#FEE2E2" stroke="#EF4444" stroke-width="1"/>
-    <text x="439" y="115.5" fill="#991B1B" font-size="8" font-weight="700">[New]</text>
+    <text x="274" y="111" fill="#3D3830" font-family="Georgia, 'Times New Roman', serif" font-size="10.5">and agency models</text>
+    <!-- Ochre Second-hand inline citation -->
+    <rect x="372" y="100" width="66" height="15" rx="2.5" fill="#FBF4E4" stroke="#9A6B1E" stroke-width="0.9"/>
+    <text x="377" y="110.5" fill="#9A6B1E" font-family="Georgia, serif" font-size="9" font-weight="700">[Gray 2007]</text>
+    <!-- Crimson Unverified inline citation -->
+    <rect x="443" y="100" width="66" height="15" rx="2.5" fill="#F9ECEE" stroke="#8B2635" stroke-width="0.9"/>
+    <text x="449" y="110.5" fill="#8B2635" font-family="Georgia, serif" font-size="9" font-weight="700">[Unverified]</text>
 
-    <!-- Floating evidence hover tooltip -->
-    <rect x="266" y="132" width="210" height="114" rx="9" fill="#0F172A" stroke="#2DD4BF" stroke-width="1.3"/>
-    <text x="278" y="151" fill="#F8FAFC" font-size="10.5" font-weight="700">Attention Is All You Need (2017)</text>
-    <text x="278" y="165" fill="#34D399" font-size="9" font-weight="600">✓ Indexed in Zotero · p. 2</text>
-    <rect x="278" y="174" width="186" height="1" fill="#1E293B"/>
-    <text x="278" y="191" fill="#CBD5E1" font-size="9.2">“The Transformer is the first</text>
-    <text x="278" y="205" fill="#CBD5E1" font-size="9.2">transduction model relying entirely</text>
-    <text x="278" y="219" fill="#CBD5E1" font-size="9.2">on self-attention.”</text>
-    <text x="278" y="236" fill="#64748B" font-size="8.5">references.notes.json · SyncTeX matched</text>
+    <!-- Engraved Archival Evidence Note Card -->
+    <rect x="274" y="130" width="232" height="130" rx="5" fill="#FCF9F2" stroke="#2E5A44" stroke-width="1.2"/>
+    <rect x="274" y="130" width="232" height="24" rx="5" fill="#EDF4EF"/>
+    <rect x="274" y="148" width="232" height="6" fill="#EDF4EF"/>
+    <line x1="274" y1="154" x2="506" y2="154" stroke="#C5D8CC" stroke-width="1"/>
+    <text x="284" y="145.5" fill="#2E5A44" font-family="Georgia, serif" font-size="9.5" font-weight="700" letter-spacing="0.06em">✓  VERIFIED IN ZOTERO · P. 2</text>
+    <text x="284" y="172" fill="#1C1917" font-family="Georgia, serif" font-size="11" font-weight="700">Attention Is All You Need (2017)</text>
+    <text x="284" y="191" fill="#3D3830" font-family="Georgia, serif" font-size="10.2" font-style="italic">“The Transformer is the first</text>
+    <text x="284" y="206" fill="#3D3830" font-family="Georgia, serif" font-size="10.2" font-style="italic">transduction model relying entirely</text>
+    <text x="284" y="221" fill="#3D3830" font-family="Georgia, serif" font-size="10.2" font-style="italic">on self-attention.”</text>
+    <line x1="284" y1="233" x2="494" y2="233" stroke="#E2D9C5" stroke-width="1"/>
+    <text x="284" y="248" fill="#7A7164" font-family="Georgia, serif" font-size="9.2">Source: references.notes.json · SyncTeX matched</text>
   </g>
 </svg>

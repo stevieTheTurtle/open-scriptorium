@@ -1,17 +1,17 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Open LaTeX Studio — Local LaTeX Studio + Bundled Research Assistant MCP" width="100%" />
+  <img src="assets/banner.png" alt="Open Scriptorium — Local LaTeX Studio + Bundled Research Assistant MCP" width="100%" />
 </p>
 
-# Open LaTeX Studio
+# Open Scriptorium
 
 A local LaTeX writing studio for **VS Code** and **Antigravity IDE** with a bundled **Research Assistant** — combining [Tectonic](https://tectonic-typesetting.github.io/) compilation, side-by-side PDF.js preview with exact-word SyncTeX, [Zotero](https://www.zotero.org/) library sync, a local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) paper knowledge base, and verbatim citation verification.
 
-> **New PC or AI Agent setting this up?** Read the complete end-to-end guide in **[SETUP.md](SETUP.md)** — it covers installing Open LaTeX Studio in VS Code / Antigravity, connecting [Zotero](https://www.zotero.org/) (with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) `@citekey` support), configuring the bundled Research Assistant MCP server, sharing your paper index across PCs, and both 1-click GUI and headless CLI/agent setup.
+> **New PC or AI Agent setting this up?** Read the complete end-to-end guide in **[SETUP.md](SETUP.md)** — it covers installing Open Scriptorium in VS Code / Antigravity, connecting [Zotero](https://www.zotero.org/) (with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) `@citekey` support), configuring the bundled Research Assistant MCP server, sharing your paper index across PCs, and both 1-click GUI and headless CLI/agent setup.
 
 ## Architecture
 
 <p align="center">
-  <img src="assets/architecture.png" alt="Open LaTeX Studio and Research Assistant architecture" width="100%" />
+  <img src="assets/architecture.png" alt="Open Scriptorium and Research Assistant architecture" width="100%" />
 </p>
 
 ## Citation Verification at a Glance
@@ -24,10 +24,10 @@ A local LaTeX writing studio for **VS Code** and **Antigravity IDE** with a bund
 
 **Bundled Research Assistant (MCP + Zotero + Citation Evidence)**
 
-- **Built-in [Zotero](https://www.zotero.org/) integration**: incrementally indexes PDF attachments (imported or linked) from a read-only snapshot of `zotero.sqlite` — preserving titles, authors, collections, tags, and [Better BibTeX](https://retorque.re/zotero-better-bibtex/) `@citekey` tags without ever locking or modifying your Zotero database. Supports on-demand sync or a background timer (`openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes`).
+- **Built-in [Zotero](https://www.zotero.org/) integration**: incrementally indexes PDF attachments (imported or linked) from a read-only snapshot of `zotero.sqlite` — preserving titles, authors, collections, tags, and [Better BibTeX](https://retorque.re/zotero-better-bibtex/) `@citekey` tags without ever locking or modifying your Zotero database. Supports on-demand sync or a background timer (`openScriptorium.researchAssistant.zoteroSyncIntervalMinutes`).
 - **Local [MCP](https://modelcontextprotocol.io/) paper knowledge base**: ships the full Research Assistant Python package (`research-assistant/` — hybrid SQLite FTS5 + ChromaDB semantic search via offline `sentence-transformers` or [Ollama](https://ollama.com/), plus optional arXiv search) and `citation-evidence` agent skill/rules (`agent-plugin/`).
-- **1-click multi-PC setup**: run `Open LaTeX Studio: Research Assistant: Set Up / Configure` from the Command Palette on any new PC. It creates a stable `~/.open-latex-studio/research-assistant/.venv`, connects to a local or cloud-synced `data/` index (e.g. OneDrive) and [Zotero](https://www.zotero.org/), and automatically registers:
-  - **Antigravity IDE** plugin (`~/.gemini/config/plugins/open-latex-studio-research/` — MCP server + `citation-evidence` skill + always-on rules + logo)
+- **1-click multi-PC setup**: run `Open Scriptorium: Research Assistant: Set Up / Configure` from the Command Palette on any new PC. It creates a stable `~/.open-scriptorium/research-assistant/.venv`, connects to a local or cloud-synced `data/` index (e.g. OneDrive) and [Zotero](https://www.zotero.org/), and automatically registers:
+  - **Antigravity IDE** plugin (`~/.gemini/config/plugins/open-scriptorium-research/` — MCP server + `citation-evidence` skill + always-on rules + logo)
   - **Claude Code CLI** (`~/.claude.json` user MCP server + `~/.claude/skills/citation-evidence/SKILL.md`)
   - **VS Code** (`mcpServerDefinitionProviders` + user `mcp.json`)
 - **Automatic PDF citation verification**: a stdlib-only citation bridge matches `.bib` entries against your Zotero index and highlights citations in the PDF preview — **Verified** (with verbatim quote + page tooltips from `references.notes.json`), **Second-hand (yellow)** with extracted citing phrases from papers in your library, and **Unverified (red)**.
@@ -68,25 +68,25 @@ For full setup instructions (including Research Assistant MCP, Zotero sync, Anti
 You need:
 
 - VS Code 1.99+ or Antigravity IDE
-- [Tectonic](https://tectonic-typesetting.github.io/book/latest/installation/), on your `PATH` or set in `openLatexStudio.tectonicPath`
+- [Tectonic](https://tectonic-typesetting.github.io/book/latest/installation/), on your `PATH` or set in `openScriptorium.tectonicPath`
 - Python 3.10+ (for the bundled Research Assistant MCP & citation verification)
 - [Zotero](https://www.zotero.org/) *(optional, recommended — with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) for `@citekey` matching)*
 - [Node.js](https://nodejs.org/) LTS *(only if building the `.vsix` from source)*
 
-Install the latest `.vsix` from **[Releases](https://github.com/stevieTheTurtle/open-latex-studio/releases)** (or build from source below):
+Install the latest `.vsix` from **[Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases)** (or build from source below):
 
 ```bash
-git clone https://github.com/stevieTheTurtle/open-latex-studio.git
-cd open-latex-studio
+git clone https://github.com/stevieTheTurtle/open-scriptorium.git
+cd open-scriptorium
 npm ci
 npm run build
 npx --yes @vscode/vsce package --no-dependencies
 ```
 
-Install `open-latex-studio-0.1.0.vsix` via **Extensions → `...` → Install from VSIX...** (or `code --install-extension open-latex-studio-0.1.0.vsix`), then:
+Install `open-scriptorium-0.1.0.vsix` via **Extensions → `...` → Install from VSIX...** (or `code --install-extension open-scriptorium-0.1.0.vsix`), then:
 
 1. Open a `.tex` file and press `Ctrl+Enter` (`Cmd+Enter` on macOS) to compile and preview.
-2. Run **`Open LaTeX Studio: Research Assistant: Set Up / Configure`** from the Command Palette to create `~/.open-latex-studio/research-assistant/.venv`, connect your paper index & Zotero library, and register the MCP server + citation-evidence skill across Antigravity IDE, Claude Code, and VS Code.
+2. Run **`Open Scriptorium: Research Assistant: Set Up / Configure`** from the Command Palette to create `~/.open-scriptorium/research-assistant/.venv`, connect your paper index & Zotero library, and register the MCP server + citation-evidence skill across Antigravity IDE, Claude Code, and VS Code.
 
 ## Keyboard shortcuts
 
@@ -99,30 +99,30 @@ Install `open-latex-studio-0.1.0.vsix` via **Extensions → `...` → Install fr
 | `Ctrl+B` / `Ctrl+I` | Bold / italic | LaTeX file |
 | `Ctrl+Scroll` | Zoom | PDF tab |
 
-On macOS, use `Cmd` in place of `Ctrl`. All commands are also in the Command Palette under **Open LaTeX Studio**.
+On macOS, use `Cmd` in place of `Ctrl`. All commands are also in the Command Palette under **Open Scriptorium**.
 
 ## Settings
 
 | Setting | Default | Description |
 |---|---|---|
-| `openLatexStudio.mainFile` | *(empty)* | Document to compile, relative to the workspace folder |
-| `openLatexStudio.outDir` | `.latex-studio/build` | Folder for the PDF and SyncTeX files |
-| `openLatexStudio.copyPdfTo` | *(empty)* | Also copy the PDF here after a successful build |
-| `openLatexStudio.tectonicPath` | *(empty)* | Tectonic executable; empty means look on `PATH` |
-| `openLatexStudio.compile.trigger` | `save` | `save`, `typing` or `off` |
-| `openLatexStudio.compile.typingDelayMs` | `2800` | Wait after the last keystroke in `typing` mode |
-| `openLatexStudio.languageFeatures.enabled` | `true` | Completion and outline; turn off if another LaTeX extension provides them |
-| `openLatexStudio.formatKeybindings` | `true` | `Ctrl+B` and `Ctrl+I` in LaTeX files, which replace the sidebar and inline chat shortcuts there |
-| `openLatexStudio.citations.notesFile` | *(empty)* | Path to a citation evidence notes JSON file (e.g. `01_Thesis_meta/references.notes.json`) |
-| `openLatexStudio.citations.statusFile` | *(empty)* | Path to citation status JSON (defaults to `<outDir>/citation_status.json`) |
-| `openLatexStudio.citations.statusCommand` | *(empty)* | Optional custom command to refresh citation status (empty uses the bundled Research Assistant bridge) |
-| `openLatexStudio.researchAssistant.enabled` | `true` | Enable bundled Research Assistant citation checks, MCP provider, and Zotero sync |
-| `openLatexStudio.researchAssistant.installDir` | *(empty)* | Stable install folder for Research Assistant (defaults to `~/.open-latex-studio/research-assistant`) |
-| `openLatexStudio.researchAssistant.dataDir` | *(empty)* | Research Assistant `data/` folder (auto-detects OneDrive or `<installDir>/data`) |
-| `openLatexStudio.researchAssistant.zoteroDir` | *(empty)* | Zotero folder containing `zotero.sqlite` (auto-detected if empty) |
-| `openLatexStudio.researchAssistant.collection` | `Zotero` | Collection name used for citation verification and Zotero sync |
-| `openLatexStudio.researchAssistant.zoteroSyncIntervalMinutes` | `0` | Periodic background Zotero sync interval in minutes (`0` = manual only) |
-| `openLatexStudio.researchAssistant.webUiPort` | `8000` | Port for the Research Assistant Web UI |
+| `openScriptorium.mainFile` | *(empty)* | Document to compile, relative to the workspace folder |
+| `openScriptorium.outDir` | `.scriptorium/build` | Folder for the PDF and SyncTeX files |
+| `openScriptorium.copyPdfTo` | *(empty)* | Also copy the PDF here after a successful build |
+| `openScriptorium.tectonicPath` | *(empty)* | Tectonic executable; empty means look on `PATH` |
+| `openScriptorium.compile.trigger` | `save` | `save`, `typing` or `off` |
+| `openScriptorium.compile.typingDelayMs` | `2800` | Wait after the last keystroke in `typing` mode |
+| `openScriptorium.languageFeatures.enabled` | `true` | Completion and outline; turn off if another LaTeX extension provides them |
+| `openScriptorium.formatKeybindings` | `true` | `Ctrl+B` and `Ctrl+I` in LaTeX files, which replace the sidebar and inline chat shortcuts there |
+| `openScriptorium.citations.notesFile` | *(empty)* | Path to a citation evidence notes JSON file (e.g. `01_Thesis_meta/references.notes.json`) |
+| `openScriptorium.citations.statusFile` | *(empty)* | Path to citation status JSON (defaults to `<outDir>/citation_status.json`) |
+| `openScriptorium.citations.statusCommand` | *(empty)* | Optional custom command to refresh citation status (empty uses the bundled Research Assistant bridge) |
+| `openScriptorium.researchAssistant.enabled` | `true` | Enable bundled Research Assistant citation checks, MCP provider, and Zotero sync |
+| `openScriptorium.researchAssistant.installDir` | *(empty)* | Stable install folder for Research Assistant (defaults to `~/.open-scriptorium/research-assistant`) |
+| `openScriptorium.researchAssistant.dataDir` | *(empty)* | Research Assistant `data/` folder (auto-detects OneDrive or `<installDir>/data`) |
+| `openScriptorium.researchAssistant.zoteroDir` | *(empty)* | Zotero folder containing `zotero.sqlite` (auto-detected if empty) |
+| `openScriptorium.researchAssistant.collection` | `Zotero` | Collection name used for citation verification and Zotero sync |
+| `openScriptorium.researchAssistant.zoteroSyncIntervalMinutes` | `0` | Periodic background Zotero sync interval in minutes (`0` = manual only) |
+| `openScriptorium.researchAssistant.webUiPort` | `8000` | Port for the Research Assistant Web UI |
 
 If `mainFile` is empty, the document to compile is chosen in this order: a `% !TEX root = ...` comment, the open file if it has `\documentclass`, the last document you compiled, then a search of the workspace.
 

@@ -1,34 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 205" fill="none" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
-  <rect width="900" height="205" rx="16" fill="#0B1220" stroke="#1E293B" stroke-width="1.5"/>
-  <text x="26" y="34" fill="#F8FAFC" font-size="15" font-weight="700">PDF Citation Verification States (Powered by Bundled Research Assistant)</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 228" fill="none">
+  <rect width="920" height="228" rx="12" fill="#FAF6EE"/>
+  <rect x="8" y="8" width="904" height="212" rx="8" stroke="#C5B89E" stroke-width="1.4"/>
+  <rect x="13" y="13" width="894" height="202" rx="5" stroke="#E2D9C5" stroke-width="1"/>
 
-  <!-- Card 1: Verified -->
-  <rect x="24" y="52" width="272" height="132" rx="12" fill="#0D221D" stroke="#10B981" stroke-opacity="0.55" stroke-width="1.5"/>
-  <rect x="40" y="68" width="92" height="22" rx="11" fill="#10B981" fill-opacity="0.2" stroke="#10B981"/>
-  <circle cx="53" cy="79" r="4" fill="#34D399"/>
-  <text x="64" y="83" fill="#6EE7B7" font-size="11" font-weight="700">VERIFIED</text>
-  <text x="40" y="111" fill="#F8FAFC" font-size="13" font-weight="600">Indexed in Zotero Library</text>
-  <text x="40" y="130" fill="#CBD5E1" font-size="11">Matched by @citekey, title+author,</text>
-  <text x="40" y="146" fill="#CBD5E1" font-size="11">or proceedings/book chapter heading.</text>
-  <text x="40" y="168" fill="#6EE7B7" font-size="10.5">Hover: verbatim quote + [p.N] from notes</text>
+  <text x="28" y="38" fill="#8B2635" font-family="Georgia, 'Times New Roman', serif" font-size="10.5" font-weight="700" letter-spacing="0.16em">PLATE II — CITATION VERIFICATION STATES</text>
+  <text x="28" y="58" fill="#1C1917" font-family="Georgia, 'Times New Roman', serif" font-size="15.5" font-weight="700">Automatic Verification Against Your Zotero Library</text>
+  <line x1="28" y1="68" x2="892" y2="68" stroke="#D5C9B2" stroke-width="1"/>
 
-  <!-- Card 2: Second-hand -->
-  <rect x="314" y="52" width="272" height="132" rx="12" fill="#251E0E" stroke="#F59E0B" stroke-opacity="0.6" stroke-width="1.5"/>
-  <rect x="330" y="68" width="114" height="22" rx="11" fill="#F59E0B" fill-opacity="0.2" stroke="#F59E0B"/>
-  <circle cx="343" cy="79" r="4" fill="#FBBF24"/>
-  <text x="354" y="83" fill="#FDE68A" font-size="11" font-weight="700">SECOND-HAND</text>
-  <text x="330" y="111" fill="#F8FAFC" font-size="13" font-weight="600">Yellow Box in PDF Preview</text>
-  <text x="330" y="130" fill="#CBD5E1" font-size="11">PDF not yet in Zotero, but other</text>
-  <text x="330" y="146" fill="#CBD5E1" font-size="11">indexed papers in your library cite it.</text>
-  <text x="330" y="168" fill="#FDE68A" font-size="10.5">Hover: lists citing papers + body quotes</text>
+  <!-- Card I: Verified -->
+  <rect x="28" y="82" width="276" height="120" rx="6" fill="#FFFFFF" stroke="#2E5A44" stroke-width="1.2"/>
+  <rect x="28" y="82" width="276" height="28" rx="6" fill="#EDF4EF"/>
+  <rect x="28" y="102" width="276" height="8" fill="#EDF4EF"/>
+  <line x1="28" y1="110" x2="304" y2="110" stroke="#C7DBD0" stroke-width="1"/>
+  <text x="40" y="100" fill="#2E5A44" font-family="Georgia, serif" font-size="11" font-weight="700" letter-spacing="0.08em">I.  VERIFIED IN LIBRARY</text>
+  <text x="40" y="131" fill="#1C1917" font-family="Georgia, serif" font-size="12.5" font-weight="700">Indexed in Zotero</text>
+  <text x="40" y="149" fill="#4A443A" font-family="Georgia, serif" font-size="11">Matched by @citekey, title + author,</text>
+  <text x="40" y="164" fill="#4A443A" font-family="Georgia, serif" font-size="11">or proceedings / book chapter heading.</text>
+  <text x="40" y="187" fill="#2E5A44" font-family="Georgia, serif" font-size="10.5" font-style="italic">Hover: verbatim quote + [p.N] from notes</text>
 
-  <!-- Card 3: Unverified -->
-  <rect x="604" y="52" width="272" height="132" rx="12" fill="#271217" stroke="#EF4444" stroke-opacity="0.6" stroke-width="1.5"/>
-  <rect x="620" y="68" width="102" height="22" rx="11" fill="#EF4444" fill-opacity="0.2" stroke="#EF4444"/>
-  <circle cx="633" cy="79" r="4" fill="#F87171"/>
-  <text x="644" y="83" fill="#FCA5A5" font-size="11" font-weight="700">UNVERIFIED</text>
-  <text x="620" y="111" fill="#F8FAFC" font-size="13" font-weight="600">Red Box in PDF Preview</text>
-  <text x="620" y="130" fill="#CBD5E1" font-size="11">Not indexed and not mentioned by</text>
-  <text x="620" y="146" fill="#CBD5E1" font-size="11">any paper in your library — verify!</text>
-  <text x="620" y="168" fill="#FCA5A5" font-size="10.5">Clears automatically after Zotero sync</text>
+  <!-- Card II: Second-hand -->
+  <rect x="322" y="82" width="276" height="120" rx="6" fill="#FFFFFF" stroke="#9A6B1E" stroke-width="1.2"/>
+  <rect x="322" y="82" width="276" height="28" rx="6" fill="#FBF4E4"/>
+  <rect x="322" y="102" width="276" height="8" fill="#FBF4E4"/>
+  <line x1="322" y1="110" x2="598" y2="110" stroke="#E6D2A2" stroke-width="1"/>
+  <text x="334" y="100" fill="#9A6B1E" font-family="Georgia, serif" font-size="11" font-weight="700" letter-spacing="0.08em">II.  SECOND-HAND (OCHRE)</text>
+  <text x="334" y="131" fill="#1C1917" font-family="Georgia, serif" font-size="12.5" font-weight="700">Amber Box in PDF Preview</text>
+  <text x="334" y="149" fill="#4A443A" font-family="Georgia, serif" font-size="11">PDF not yet in Zotero, but other</text>
+  <text x="334" y="164" fill="#4A443A" font-family="Georgia, serif" font-size="11">indexed papers in your library cite it.</text>
+  <text x="334" y="187" fill="#9A6B1E" font-family="Georgia, serif" font-size="10.5" font-style="italic">Hover: citing papers + extracted body quotes</text>
+
+  <!-- Card III: Unverified -->
+  <rect x="616" y="82" width="276" height="120" rx="6" fill="#FFFFFF" stroke="#8B2635" stroke-width="1.2"/>
+  <rect x="616" y="82" width="276" height="28" rx="6" fill="#F9ECEE"/>
+  <rect x="616" y="102" width="276" height="8" fill="#F9ECEE"/>
+  <line x1="616" y1="110" x2="892" y2="110" stroke="#E0BAC0" stroke-width="1"/>
+  <text x="628" y="100" fill="#8B2635" font-family="Georgia, serif" font-size="11" font-weight="700" letter-spacing="0.08em">III.  UNVERIFIED (CRIMSON)</text>
+  <text x="628" y="131" fill="#1C1917" font-family="Georgia, serif" font-size="12.5" font-weight="700">Crimson Box in PDF Preview</text>
+  <text x="628" y="149" fill="#4A443A" font-family="Georgia, serif" font-size="11">Not indexed and not mentioned by</text>
+  <text x="628" y="164" fill="#4A443A" font-family="Georgia, serif" font-size="11">any paper in your library — verify!</text>
+  <text x="628" y="187" fill="#8B2635" font-family="Georgia, serif" font-size="10.5" font-style="italic">Clears automatically after Zotero sync</text>
 </svg>

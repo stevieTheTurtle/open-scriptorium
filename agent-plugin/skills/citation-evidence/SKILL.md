@@ -12,7 +12,7 @@ description: >-
 # Citation Evidence & Research Assistant Workflow
 
 You have access to the user's local paper knowledge base via the
-`research-assistant` MCP server, paired with **Open LaTeX Studio**'s citation
+`research-assistant` MCP server, paired with **Open Scriptorium**'s citation
 evidence system.
 
 ## Tools (`research-assistant` MCP)
@@ -32,7 +32,7 @@ evidence system.
 Whenever you add a `\cite{key}` (`\citep`, `\citet`, `\citealp`, etc.) to any
 `.tex` file, in the **same edit** as the `.tex`/`.bib` change, append an entry
 for `key` to the project's citation notes file (configured by
-`openLatexStudio.citations.notesFile`, e.g. `01_Thesis_meta/references.notes.json`,
+`openScriptorium.citations.notesFile`, e.g. `01_Thesis_meta/references.notes.json`,
 or a sibling `<bib>.notes.json` next to the `.bib` file):
 
 ```json
@@ -67,7 +67,7 @@ or a sibling `<bib>.notes.json` next to the `.bib` file):
    BibTeX fields (authors, venues, years, DOIs, page numbers) from memory. If a
    paper is missing from the library / Zotero, leave it out and inform the user.
 6. **Unindexed or garbled PDFs**: If a cited paper is not in the Research
-   Assistant index (highlighted yellow or red in the Open LaTeX Studio PDF
+   Assistant index (highlighted yellow or red in the Open Scriptorium PDF
    viewer) or its extracted text is garbled (scanned PDF, poster), do not invent
    a note; list those citekeys in your reply so the user can check them manually.
 

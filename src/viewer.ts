@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import type { PdfBox } from './synctex.ts';
 import type { CitationEntry } from './citations.ts';
 
-export const VIEW_TYPE = 'openLatexStudio.pdf';
+export const VIEW_TYPE = 'openScriptorium.pdf';
 const WATCH_DEBOUNCE_MS = 200;
 const OPEN_TIMEOUT_MS = 5000;
 
@@ -255,7 +255,7 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
         });
         break;
       case 'compile':
-        void vscode.commands.executeCommand('openLatexStudio.compile');
+        void vscode.commands.executeCommand('openScriptorium.compile');
         break;
       case 'resolveCiteFile':
         this.resolveCiteFile.fire({

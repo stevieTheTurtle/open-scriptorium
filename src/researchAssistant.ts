@@ -33,7 +33,7 @@ import {
   type ResearchAssistantSettings,
 } from './researchAssistantConfig.ts';
 
-export const MCP_PROVIDER_ID = 'openLatexStudio.researchAssistant';
+export const MCP_PROVIDER_ID = 'openScriptorium.researchAssistant';
 
 interface CommandResult {
   code: number;
@@ -134,7 +134,7 @@ export class ResearchAssistantService implements vscode.Disposable {
 
   constructor(context: vscode.ExtensionContext) {
     this.context = context;
-    this.output = vscode.window.createOutputChannel('Open LaTeX Studio — Research Assistant');
+    this.output = vscode.window.createOutputChannel('Open Scriptorium — Research Assistant');
     this.disposables.push(
       this.output,
       this.syncedEmitter,
@@ -299,7 +299,7 @@ export class ResearchAssistantService implements vscode.Disposable {
   /** Interactive 1-click setup wizard for any new PC. */
   async setupWizard(): Promise<void> {
     if (!fs.existsSync(this.bundledSourceDir)) {
-      void vscode.window.showErrorMessage('Open LaTeX Studio: bundled Research Assistant files are missing from this installation.');
+      void vscode.window.showErrorMessage('Open Scriptorium: bundled Research Assistant files are missing from this installation.');
       return;
     }
 
@@ -320,7 +320,7 @@ export class ResearchAssistantService implements vscode.Disposable {
       if (!entered) return;
       const verified = await detectPython310Plus(entered);
       if (!verified) {
-        void vscode.window.showErrorMessage(`Open LaTeX Studio: "${entered}" is not a working Python 3.10+ executable.`);
+        void vscode.window.showErrorMessage(`Open Scriptorium: "${entered}" is not a working Python 3.10+ executable.`);
         return;
       }
       pythonCmd = verified.cmd;
@@ -477,7 +477,7 @@ export class ResearchAssistantService implements vscode.Disposable {
     });
 
     this.output.show(true);
-    this.output.appendLine('=== Open LaTeX Studio: Research Assistant Setup ===');
+    this.output.appendLine('=== Open Scriptorium: Research Assistant Setup ===');
     this.output.appendLine(`Install dir : ${finalPaths.installDir}`);
     this.output.appendLine(`Data dir    : ${finalPaths.dataDir}`);
     this.output.appendLine(`Zotero dir  : ${finalPaths.zoteroDir ?? '(none)'}`);
@@ -486,7 +486,7 @@ export class ResearchAssistantService implements vscode.Disposable {
     const ok = await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: 'Open LaTeX Studio: Setting up Research Assistant',
+        title: 'Open Scriptorium: Setting up Research Assistant',
         cancellable: false,
       },
       async (progress) => {
@@ -569,7 +569,7 @@ export class ResearchAssistantService implements vscode.Disposable {
 
     if (!ok) {
       void vscode.window.showErrorMessage(
-        'Open LaTeX Studio: Research Assistant setup failed. Check the "Open LaTeX Studio — Research Assistant" output log.',
+        'Open Scriptorium: Research Assistant setup failed. Check the "Open Scriptorium — Research Assistant" output log.',
       );
       return;
     }
@@ -676,7 +676,7 @@ export class ResearchAssistantService implements vscode.Disposable {
     if (!paths.zoteroDir || !fs.existsSync(path.join(paths.zoteroDir, 'zotero.sqlite'))) {
       if (!silent) {
         void vscode.window.showWarningMessage(
-          'Research Assistant: Zotero folder (containing zotero.sqlite) is not configured. Run Setup or set openLatexStudio.researchAssistant.zoteroDir.',
+          'Research Assistant: Zotero folder (containing zotero.sqlite) is not configured. Run Setup or set openScriptorium.researchAssistant.zoteroDir.',
         );
       }
       return false;
@@ -709,7 +709,7 @@ export class ResearchAssistantService implements vscode.Disposable {
         : vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.Notification,
-              title: 'Open LaTeX Studio: Syncing Zotero library…',
+              title: 'Open Scriptorium: Syncing Zotero library…',
               cancellable: false,
             },
             run,
@@ -859,7 +859,7 @@ export class ResearchAssistantService implements vscode.Disposable {
     ];
 
     const picked = await vscode.window.showQuickPick(items, {
-      title: 'Open LaTeX Studio — Research Assistant Status',
+      title: 'Open Scriptorium — Research Assistant Status',
       placeHolder: 'Choose an action',
     });
     if (picked?.action) await picked.action();

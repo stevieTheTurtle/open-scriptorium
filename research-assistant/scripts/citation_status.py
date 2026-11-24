@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Standalone citation status generator for Open LaTeX Studio.
+Standalone citation status generator for Open Scriptorium.
 
 Uses ONLY Python's standard library (sqlite3, json, re, unicodedata) so it works
 with any Python 3.10+ installation even before heavy ML dependencies are installed.
@@ -37,7 +37,7 @@ _CITED_WINDOW = 300
 _HEADING_WINDOW = 60
 _HEADING_AUTHORS_WINDOW = 200
 _VOLUME_MIN_PAGES = 50
-_EXCLUDED_DIRS = {".git", "node_modules", "_Old", ".latex-studio", "__pycache__", ".venv"}
+_EXCLUDED_DIRS = {".git", "node_modules", "_Old", ".scriptorium", "__pycache__", ".venv"}
 
 _TEX_ACCENTS = {
     "'": "\u0301", "`": "\u0300", "^": "\u0302", '"': "\u0308", "~": "\u0303",
@@ -504,7 +504,7 @@ def load_previous(path: Path) -> dict:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Generate Open LaTeX Studio citation_status.json from Research Assistant DB.")
+    ap = argparse.ArgumentParser(description="Generate Open Scriptorium citation_status.json from Research Assistant DB.")
     ap.add_argument("--bib", action="append", default=[], help="Path to a .bib file (repeatable)")
     ap.add_argument("--bib-dir", type=Path, default=None, help="Directory to scan recursively for .bib files")
     ap.add_argument("--db", type=Path, required=True, help="Path to Research Assistant metadata.db")

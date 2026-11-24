@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 
 export const RESEARCH_ASSISTANT_SERVER_NAME = 'research-assistant';
-export const ANTIGRAVITY_PLUGIN_DIR_NAME = 'open-latex-studio-research';
+export const ANTIGRAVITY_PLUGIN_DIR_NAME = 'open-scriptorium-research';
 export const CITATION_SKILL_DIR_NAME = 'citation-evidence';
 
 export type EmbeddingProvider = 'sentence_transformers' | 'ollama';
@@ -58,7 +58,7 @@ export function expandHome(input: string, homeDir: string = os.homedir()): strin
 }
 
 export function defaultInstallDir(homeDir: string = os.homedir()): string {
-  return path.join(homeDir, '.open-latex-studio', 'research-assistant');
+  return path.join(homeDir, '.open-scriptorium', 'research-assistant');
 }
 
 export function venvPythonFor(installDir: string, platform: NodeJS.Platform = process.platform): string {
@@ -258,7 +258,7 @@ export function renderConfigYaml(options: {
     '  host: 127.0.0.1',
     `  port: ${port}`,
     '',
-    '# Overridden by RA_DATA_DIR when launched from Open LaTeX Studio',
+    '# Overridden by RA_DATA_DIR when launched from Open Scriptorium',
     `data_dir: ${JSON.stringify(dataDir)}`,
     '',
   ].join('\n');
@@ -317,7 +317,7 @@ export function claudeConfigPaths(homeDir: string = os.homedir()): {
 }
 
 /**
- * Installs/updates the Antigravity plugin at ~/.gemini/config/plugins/open-latex-studio-research/
+ * Installs/updates the Antigravity plugin at ~/.gemini/config/plugins/open-scriptorium-research/
  * containing plugin.json, mcp_config.json, skills/citation-evidence/SKILL.md, and rules/AGENTS.md.
  */
 export function registerAntigravityPlugin(
@@ -332,12 +332,12 @@ export function registerAntigravityPlugin(
   fs.mkdirSync(rulesDir, { recursive: true });
 
   writeJsonAtomic(path.join(dir, 'plugin.json'), {
-    name: 'Open LaTeX Studio Research Assistant',
-    description: 'Local paper library MCP server and citation evidence workflow bundled with Open LaTeX Studio.',
+    name: 'Open Scriptorium Research Assistant',
+    description: 'Local paper library MCP server and citation evidence workflow bundled with Open Scriptorium.',
     version: templates.version ?? '0.1.0',
     repository: {
       type: 'git',
-      url: 'https://github.com/stevieTheTurtle/open-latex-studio.git',
+      url: 'https://github.com/stevieTheTurtle/open-scriptorium.git',
     },
   });
 

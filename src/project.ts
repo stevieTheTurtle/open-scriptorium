@@ -5,10 +5,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { outputPathsFor, type OutputPaths } from './compile.ts';
 
-export const CONFIG_SECTION = 'openLatexStudio';
-const REMEMBERED_MAIN = 'openLatexStudio.mainFile';
-const DEFAULT_OUT_DIR = '.latex-studio/build';
-const EXCLUDED = '**/{node_modules,.git,_Old,.latex-studio}/**';
+export const CONFIG_SECTION = 'openScriptorium';
+const REMEMBERED_MAIN = 'openScriptorium.mainFile';
+const DEFAULT_OUT_DIR = '.scriptorium/build';
+const EXCLUDED = '**/{node_modules,.git,_Old,.scriptorium}/**';
 
 export interface Project extends OutputPaths {
   folder: vscode.WorkspaceFolder | undefined;
@@ -73,7 +73,7 @@ export class ProjectResolver {
     if (setting) {
       const file = path.isAbsolute(setting) ? setting : path.join(folder?.uri.fsPath ?? '', setting);
       if (fs.existsSync(file)) return file;
-      void vscode.window.showWarningMessage(`Open LaTeX Studio: the configured main file "${setting}" does not exist.`);
+      void vscode.window.showWarningMessage(`Open Scriptorium: the configured main file "${setting}" does not exist.`);
       return undefined;
     }
 
@@ -103,7 +103,7 @@ export class ProjectResolver {
     const items = candidates
       .map((file) => ({ label: path.relative(folder.uri.fsPath, file), file }))
       .sort((a, b) => Number(path.basename(b.file) === 'main.tex') - Number(path.basename(a.file) === 'main.tex'));
-    const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Which document should Open LaTeX Studio compile?' });
+    const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Which document should Open Scriptorium compile?' });
     if (picked) await this.state.update(REMEMBERED_MAIN, picked.file);
     return picked?.file;
   }
@@ -121,7 +121,7 @@ function hasDocumentClass(file: string): boolean {
 export function ignoreDefaultOutDir(project: Project): void {
   const relative = project.folder && path.relative(project.folder.uri.fsPath, project.outDir).split(path.sep).join('/');
   if (relative !== DEFAULT_OUT_DIR) return;
-  const ignore = path.join(project.folder!.uri.fsPath, '.latex-studio', '.gitignore');
+  const ignore = path.join(project.folder!.uri.fsPath, '.scriptorium', '.gitignore');
   if (fs.existsSync(ignore)) return;
   fs.mkdirSync(path.dirname(ignore), { recursive: true });
   fs.writeFileSync(ignore, '*\n');

@@ -1,36 +1,61 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
   <defs>
-    <linearGradient id="bg" x1="12" y1="8" x2="116" y2="120" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#141E35"/>
-      <stop offset="100%" stop-color="#0F172A"/>
+    <linearGradient id="cover" x1="10" y1="8" x2="118" y2="122" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7A2230"/>
+      <stop offset="100%" stop-color="#4F141E"/>
     </linearGradient>
-    <linearGradient id="page" x1="28" y1="20" x2="88" y2="106" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#F8FAFC"/>
-      <stop offset="100%" stop-color="#E2E8F0"/>
+    <linearGradient id="leftLeaf" x1="24" y1="30" x2="64" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FCF9F2"/>
+      <stop offset="100%" stop-color="#EDE4D0"/>
     </linearGradient>
-    <linearGradient id="ribbon" x1="40" y1="20" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#2DD4BF"/>
-      <stop offset="100%" stop-color="#0D9488"/>
+    <linearGradient id="rightLeaf" x1="64" y1="30" x2="104" y2="96" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FAF6EC"/>
+      <stop offset="100%" stop-color="#E6DAC2"/>
     </linearGradient>
-    <linearGradient id="accent" x1="76" y1="70" x2="112" y2="106" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#FBBF24"/>
-      <stop offset="100%" stop-color="#F59E0B"/>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E7C983"/>
+      <stop offset="100%" stop-color="#B58938"/>
     </linearGradient>
   </defs>
-  <rect x="4" y="4" width="120" height="120" rx="26" fill="url(#bg)" stroke="#334155" stroke-width="2"/>
-  <!-- Main document page with folded corner -->
-  <path d="M30 22h42l20 20v60a8 8 0 0 1-8 8H30a8 8 0 0 1-8-8V30a8 8 0 0 1 8-8Z" fill="url(#page)"/>
-  <path d="M72 22v14a6 6 0 0 0 6 6h14L72 22Z" fill="#CBD5E1"/>
-  <!-- Teal bookmark ribbon -->
-  <path d="M36 22h14v34l-7-5.5L36 56V22Z" fill="url(#ribbon)"/>
-  <!-- Stylized LaTeX/prose lines -->
-  <rect x="34" y="66" width="38" height="5.5" rx="2.75" fill="#475569"/>
-  <rect x="34" y="78" width="46" height="5.5" rx="2.75" fill="#64748B"/>
-  <rect x="34" y="90" width="28" height="5.5" rx="2.75" fill="#94A3B8"/>
-  <!-- Citation graph badge -->
-  <circle cx="90" cy="88" r="22" fill="#0F172A" stroke="#334155" stroke-width="2"/>
-  <path d="M81 94l9-14 10 11-19 3Z" stroke="#2DD4BF" stroke-width="2.4" stroke-linejoin="round"/>
-  <circle cx="90" cy="80" r="4.2" fill="url(#accent)"/>
-  <circle cx="81" cy="94" r="3.6" fill="#38BDF8"/>
-  <circle cx="100" cy="91" r="3.6" fill="#2DD4BF"/>
+
+  <!-- Clothbound Oxford burgundy tile with gilded double frame -->
+  <rect x="4" y="4" width="120" height="120" rx="22" fill="url(#cover)" stroke="#3B0E16" stroke-width="2"/>
+  <rect x="11" y="11" width="106" height="106" rx="16" stroke="url(#gold)" stroke-width="1.6" stroke-opacity="0.85"/>
+
+  <!-- Open archival codex / manuscript book -->
+  <!-- Dark spine & cover edge underneath -->
+  <path d="M22 41 C38 35, 54 37, 64 43 C74 37, 90 35, 106 41 L106 95 C90 89, 74 91, 64 97 C54 91, 38 89, 22 95 Z" fill="#2B1418" fill-opacity="0.45" transform="translate(0, 4)"/>
+  <!-- Left folio -->
+  <path d="M24 38 C39 32, 54 34, 64 40 L64 93 C54 87, 39 85, 24 91 Z" fill="url(#leftLeaf)" stroke="#C7B89A" stroke-width="1.2"/>
+  <!-- Right folio -->
+  <path d="M104 38 C89 32, 74 34, 64 40 L64 93 C74 87, 89 85, 104 91 Z" fill="url(#rightLeaf)" stroke="#C7B89A" stroke-width="1.2"/>
+  <!-- Center gutter shadow -->
+  <line x1="64" y1="40" x2="64" y2="93" stroke="#B6A586" stroke-width="1.4"/>
+
+  <!-- Illuminated rubricated initial & ruled manuscript lines on left page -->
+  <rect x="31" y="47" width="10" height="11" rx="1.5" fill="#8B2635"/>
+  <path d="M34 55 L36 49.5 L38 55 M34.7 53.5 L37.3 53.5" stroke="#FAF6EE" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="44" y1="49" x2="57" y2="50.5" stroke="#6F6556" stroke-width="2" stroke-linecap="round"/>
+  <line x1="44" y1="55" x2="57" y2="56.5" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+  <line x1="31" y1="64" x2="57" y2="66" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+  <line x1="31" y1="71" x2="57" y2="73" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+  <line x1="31" y1="78" x2="50" y2="79.5" stroke="#A69A87" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Subtle ruled lines on right page -->
+  <line x1="71" y1="50.5" x2="96" y2="48.5" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+  <line x1="71" y1="57.5" x2="96" y2="55.5" stroke="#8C806E" stroke-width="2" stroke-linecap="round"/>
+  <line x1="71" y1="64.5" x2="90" y2="63" stroke="#A69A87" stroke-width="2" stroke-linecap="round"/>
+  <!-- Small archival laurel/verified mark on bottom right margin -->
+  <rect x="71" y="72" width="19" height="4.5" rx="2" fill="#2E5A44" fill-opacity="0.85"/>
+
+  <!-- Bookmark ribbon hanging gracefully from spine -->
+  <path d="M61 90 L67 90 L67 109 L64 104.5 L61 109 Z" fill="url(#gold)"/>
+
+  <!-- Classical fountain / calligraphic nib resting diagonally on upper right -->
+  <g transform="translate(88, 33) rotate(36)">
+    <path d="M0 -18 C5 -9, 9 -1, 7 11 L-7 11 C-9 -1, -5 -9, 0 -18 Z" fill="#1E1A16" stroke="url(#gold)" stroke-width="1.5" stroke-linejoin="round"/>
+    <line x1="0" y1="-16" x2="0" y2="-1" stroke="url(#gold)" stroke-width="1.3"/>
+    <circle cx="0" cy="-1" r="2.3" fill="url(#gold)"/>
+    <rect x="-7.5" y="10" width="15" height="4.5" rx="1.2" fill="url(#gold)"/>
+  </g>
 </svg>

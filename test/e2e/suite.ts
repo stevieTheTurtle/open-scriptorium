@@ -10,7 +10,7 @@ interface Run {
   mode: 'fixture' | 'thesis';
 }
 
-const EXTENSION_ID = 'open-latex-studio.open-latex-studio';
+const EXTENSION_ID = 'open-scriptorium.open-scriptorium';
 
 async function waitFor<T>(what: string, probe: () => T | undefined | null | false, timeoutMs = 20000): Promise<T> {
   const started = Date.now();
@@ -85,8 +85,8 @@ type Step = (name: string, body: () => Promise<unknown>) => Promise<void>;
 async function fixture(api: ExtensionApi, root: string, step: Step): Promise<void> {
   const ch1 = vscode.Uri.file(path.join(root, 'ch1.tex'));
   const main = vscode.Uri.file(path.join(root, 'main.tex'));
-  const pdf = vscode.Uri.file(path.join(root, '.latex-studio', 'build', 'main.pdf'));
-  const synctex = path.join(root, '.latex-studio', 'build', 'main.synctex.gz');
+  const pdf = vscode.Uri.file(path.join(root, '.scriptorium', 'build', 'main.pdf'));
+  const synctex = path.join(root, '.scriptorium', 'build', 'main.synctex.gz');
   await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(ch1));
 
   await step('finds the main file from a chapter', async () => {
@@ -95,11 +95,11 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
   });
 
   await step('compile produces PDF, SyncTeX and opens the viewer', async () => {
-    const finished: any = await vscode.commands.executeCommand('openLatexStudio.compile');
+    const finished: any = await vscode.commands.executeCommand('openScriptorium.compile');
     assert.equal(finished.result.success, true, finished.result.log);
     assert.ok(fs.existsSync(pdf.fsPath));
     assert.ok(fs.existsSync(synctex));
-    assert.ok(fs.existsSync(path.join(root, '.latex-studio', '.gitignore')));
+    assert.ok(fs.existsSync(path.join(root, '.scriptorium', '.gitignore')));
     const info = await waitFor('viewer load', () => (api.viewer.info(pdf)?.loads ? api.viewer.info(pdf) : null));
     assert.ok(info.numPages >= 1);
     return { durationMs: finished.result.durationMs, numPages: info.numPages };
@@ -107,7 +107,7 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
 
   await step('goes from source to PDF', async () => {
     await openAt(ch1, 'zanzibarword');
-    await vscode.commands.executeCommand('openLatexStudio.syncToPdf');
+    await vscode.commands.executeCommand('openScriptorium.syncToPdf');
     const page = await waitFor('reveal', () => api.viewer.info(pdf)?.lastRevealedPage);
     assert.equal(page, 1);
     return { page };
@@ -138,7 +138,7 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
     const editor = await openAt(ch1, 'First chapter');
     const original = editor.document.getText();
     const line = await appendLine(editor, '\\undefinedmacroxyz');
-    const finished: any = await vscode.commands.executeCommand('openLatexStudio.compile');
+    const finished: any = await vscode.commands.executeCommand('openScriptorium.compile');
     assert.equal(finished.result.success, false);
     assert.equal(editor.document.isDirty, false, 'compile should save project files');
     const errors = api.session.getDiagnostics(ch1).filter((d) => d.severity === vscode.DiagnosticSeverity.Error);
@@ -148,7 +148,7 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
 
     await setText(editor.document, original);
     await editor.document.save();
-    const fixed: any = await vscode.commands.executeCommand('openLatexStudio.compile');
+    const fixed: any = await vscode.commands.executeCommand('openScriptorium.compile');
     assert.equal(fixed.result.success, true, fixed.result.log);
     assert.equal(api.session.getDiagnostics(ch1).filter((d) => d.severity === vscode.DiagnosticSeverity.Error).length, 0);
     await waitFor('reload after fix', () => api.viewer.info(pdf)!.loads > before);
@@ -156,7 +156,7 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
   });
 
   await step('saving triggers a build when configured', async () => {
-    const config = vscode.workspace.getConfiguration('openLatexStudio');
+    const config = vscode.workspace.getConfiguration('openScriptorium');
     await config.update('compile.trigger', 'save', vscode.ConfigurationTarget.Workspace);
     const runs = api.session.runs;
     const loads = api.viewer.info(pdf)!.loads;
@@ -185,7 +185,7 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
   });
 
   await step('clean build succeeds from the command', async () => {
-    const finished: any = await vscode.commands.executeCommand('openLatexStudio.compileClean');
+    const finished: any = await vscode.commands.executeCommand('openScriptorium.compileClean');
     assert.equal(finished.result.success, true);
     assert.ok(fs.existsSync(pdf.fsPath));
   });
@@ -243,19 +243,19 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
     const original = editor.document.getText();
     const start = positionOf(editor.document, 'Closing');
     editor.selection = new vscode.Selection(start, start.translate(0, 'Closing'.length));
-    await vscode.commands.executeCommand('openLatexStudio.insert.bold');
+    await vscode.commands.executeCommand('openScriptorium.insert.bold');
     assert.ok(editor.document.getText().includes('\\textbf{Closing} paragraph'), editor.document.getText());
     await setText(editor.document, original);
 
     const math = positionOf(editor.document, 'Closing');
     editor.selection = new vscode.Selection(math, math.translate(0, 'Closing'.length));
-    await vscode.commands.executeCommand('openLatexStudio.insert.math');
+    await vscode.commands.executeCommand('openScriptorium.insert.math');
     assert.ok(editor.document.getText().includes('$Closing$ paragraph'), editor.document.getText());
     await setText(editor.document, original);
 
     const end = editor.document.lineAt(editor.document.lineCount - 1).range.end;
     editor.selection = new vscode.Selection(end, end);
-    await vscode.commands.executeCommand('openLatexStudio.insert.figure');
+    await vscode.commands.executeCommand('openScriptorium.insert.figure');
     const text = editor.document.getText();
     assert.ok(text.includes('\\begin{figure}[htbp]') && text.includes('\\includegraphics[width=0.85\\textwidth]{figures/sample.png}'), text);
     await setText(editor.document, original);
@@ -275,11 +275,11 @@ async function fixture(api: ExtensionApi, root: string, step: Step): Promise<voi
 
 async function thesis(api: ExtensionApi, root: string, step: Step): Promise<void> {
   const chapter = vscode.Uri.file(path.join(root, 'chapters', '01_introduction', '01_introduction.tex'));
-  const pdf = vscode.Uri.file(path.join(root, '.latex-studio', 'build', 'main.pdf'));
+  const pdf = vscode.Uri.file(path.join(root, '.scriptorium', 'build', 'main.pdf'));
   await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(chapter));
 
   await step('compiles the full thesis', async () => {
-    const finished: any = await vscode.commands.executeCommand('openLatexStudio.compile');
+    const finished: any = await vscode.commands.executeCommand('openScriptorium.compile');
     assert.equal(finished.result.success, true, finished.result.log.slice(-2000));
     const info = await waitFor('viewer load', () => (api.viewer.info(pdf)?.loads ? api.viewer.info(pdf) : null));
     const diagnostics = vscode.languages.getDiagnostics().flatMap(([uri, items]) => items.map((d) => path.basename(uri.fsPath)));
@@ -294,13 +294,13 @@ async function thesis(api: ExtensionApi, root: string, step: Step): Promise<void
 
   await step('source to PDF in a chapter', async () => {
     await openAt(chapter, 'Believability does not reside');
-    await vscode.commands.executeCommand('openLatexStudio.syncToPdf');
+    await vscode.commands.executeCommand('openScriptorium.syncToPdf');
     return { page: await waitFor('reveal', () => api.viewer.info(pdf)?.lastRevealedPage) };
   });
 
   await step('PDF to the exact word in a chapter', async () => {
     const { loadSyncTex } = await import('../../src/synctex');
-    const data = loadSyncTex(path.join(root, '.latex-studio', 'build', 'main.synctex.gz'), root)!;
+    const data = loadSyncTex(path.join(root, '.scriptorium', 'build', 'main.synctex.gz'), root)!;
     const document = await vscode.workspace.openTextDocument(chapter);
     const line = positionOf(document, 'Believability does not reside').line + 1;
     const box = data.view('chapters/01_introduction/01_introduction.tex', line)!.boxes[0];

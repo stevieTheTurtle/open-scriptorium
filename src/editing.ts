@@ -8,7 +8,7 @@ import { completionContext, parseHeadings, parseLabels, projectFiles, stripComme
 import { CONFIG_SECTION, type ProjectResolver } from './project.ts';
 
 const SELECTOR: vscode.DocumentSelector = [{ language: 'latex' }, { language: 'tex' }];
-const EXCLUDED = '**/{node_modules,.git,_Old,.latex-studio}/**';
+const EXCLUDED = '**/{node_modules,.git,_Old,.scriptorium}/**';
 const STATUS_DEBOUNCE_MS = 300;
 
 const ENVIRONMENTS = [
@@ -97,15 +97,15 @@ export class EditingFeatures implements vscode.Disposable {
 
   constructor(projects: ProjectResolver) {
     this.projects = projects;
-    this.status.command = 'openLatexStudio.wordCount';
+    this.status.command = 'openScriptorium.wordCount';
     this.status.tooltip = 'Words in this file. Click for the whole document.';
 
     const commands: [string, () => unknown][] = [
-      ['openLatexStudio.wordCount', () => this.showWordReport()],
-      ...Object.entries(WRAP_COMMANDS).map(([name, snippet]): [string, () => unknown] => [`openLatexStudio.insert.${name}`, () => this.insert(snippet)]),
-      ...Object.entries(BLOCK_COMMANDS).map(([name, snippet]): [string, () => unknown] => [`openLatexStudio.insert.${name}`, () => this.insert(snippet)]),
+      ['openScriptorium.wordCount', () => this.showWordReport()],
+      ...Object.entries(WRAP_COMMANDS).map(([name, snippet]): [string, () => unknown] => [`openScriptorium.insert.${name}`, () => this.insert(snippet)]),
+      ...Object.entries(BLOCK_COMMANDS).map(([name, snippet]): [string, () => unknown] => [`openScriptorium.insert.${name}`, () => this.insert(snippet)]),
       ...Object.entries(REFERENCE_COMMANDS).map(([name, snippet]): [string, () => unknown] => [
-        `openLatexStudio.insert.${name}`,
+        `openScriptorium.insert.${name}`,
         async () => {
           await this.insert(snippet);
           await vscode.commands.executeCommand('editor.action.triggerSuggest');

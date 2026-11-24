@@ -10,7 +10,7 @@ import { mergeCitations, parseNotesFile, parseStatusFile, type CitationEntry, ty
 import { CONFIG_SECTION, type Project } from './project.ts';
 import type { ResearchAssistantService } from './researchAssistant.ts';
 
-const EXCLUDED = '**/{node_modules,.git,_Old,.latex-studio}/**';
+const EXCLUDED = '**/{node_modules,.git,_Old,.scriptorium}/**';
 const WATCH_DEBOUNCE_MS = 200;
 
 function resolveWorkspacePath(setting: string, project: Project): string | null {
