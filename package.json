@@ -2,9 +2,14 @@
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
   "description": "LaTeX writing studio for VS Code & Antigravity: Tectonic builds, SyncTeX PDF preview, bundled Research Assistant CLI & opt-in MCP, Zotero sync, and verbatim citation verification.",
-  "version": "0.2.0",
-  "publisher": "open-scriptorium",
+  "version": "0.3.0",
+  "publisher": "stevieTheTurtle",
   "icon": "assets/icon.png",
+  "galleryBanner": {
+    "color": "#1c2331",
+    "theme": "dark"
+  },
+  "qna": "https://github.com/stevieTheTurtle/open-scriptorium/issues",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -38,6 +43,7 @@
     "onLanguage:latex",
     "onLanguage:bibtex",
     "workspaceContains:**/*.tex",
+    "onCommand:openScriptorium.installTectonic",
     "onCommand:openScriptorium.researchAssistant.setup",
     "onCommand:openScriptorium.researchAssistant.status",
     "onCommand:openScriptorium.researchAssistant.syncZotero",
@@ -92,6 +98,12 @@
         "title": "Clean and Compile",
         "category": "Open Scriptorium",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "openScriptorium.installTectonic",
+        "title": "Install / Update Tectonic",
+        "category": "Open Scriptorium",
+        "icon": "$(cloud-download)"
       },
       {
         "command": "openScriptorium.openPreview",
@@ -335,7 +347,13 @@
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "markdownDescription": "Path to the Tectonic executable. Leave empty to find it on `PATH`."
+          "markdownDescription": "Path to the Tectonic executable. Leave empty to use `tectonic` on `PATH` or the managed copy in `~/.open-scriptorium/bin/` (auto-installed on first compile)."
+        },
+        "openScriptorium.tectonic.autoInstall": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine-overridable",
+          "markdownDescription": "Automatically download and install a managed Tectonic binary into `~/.open-scriptorium/bin/` on first compile when `tectonicPath` is empty and Tectonic is not on `PATH`."
         },
         "openScriptorium.compile.trigger": {
           "type": "string",
@@ -448,7 +466,10 @@
     "build": "node build.mjs",
     "build:modern": "node build.mjs modern",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/latex.test.ts test/unit/citations.test.ts test/unit/researchAssistant.test.ts"
+    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/tectonicInstaller.test.ts test/unit/latex.test.ts test/unit/citations.test.ts test/unit/researchAssistant.test.ts",
+    "package": "npm run build && npx --yes @vscode/vsce package --no-dependencies",
+    "publish:vscode": "npx --yes @vscode/vsce publish --no-dependencies",
+    "publish:ovsx": "npx --yes ovsx publish --no-dependencies"
   },
   "dependencies": {
     "pdfjs-dist": "6.5.438"

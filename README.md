@@ -36,6 +36,7 @@ A local LaTeX writing studio for **VS Code** and **Antigravity IDE** with a bund
 **Compile**
 
 - Compiles on save, while you type, or only on request with [Tectonic](https://tectonic-typesetting.github.io/).
+- **Automatic Tectonic setup**: if Tectonic is not on `PATH` (and `openScriptorium.tectonicPath` is empty), Open Scriptorium downloads and verifies the official prebuilt binary into `~/.open-scriptorium/bin/` on first compile (or anytime via `Open Scriptorium: Install / Update Tectonic`).
 - One build at a time. Anything you ask for during a build is merged into a single follow-up, so no change is lost.
 - A failed build keeps the last good PDF on screen.
 - Errors, warnings and bad boxes appear in the Problems panel, on the right file and line. Warnings from inside packages stay in the log.
@@ -68,22 +69,21 @@ For full setup instructions (including Research Assistant MCP, Zotero sync, Anti
 You need:
 
 - VS Code 1.99+ or Antigravity IDE
-- [Tectonic](https://tectonic-typesetting.github.io/book/latest/installation/), on your `PATH` or set in `openScriptorium.tectonicPath`
-- Python 3.10+ (for the bundled Research Assistant MCP & citation verification)
+- [Tectonic](https://tectonic-typesetting.github.io/book/latest/installation/) *(installed automatically on first compile into `~/.open-scriptorium/bin/`, or use your own via `PATH` / `openScriptorium.tectonicPath`)*
+- Python 3.10+ *(for the bundled Research Assistant CLI/MCP & citation verification)*
 - [Zotero](https://www.zotero.org/) *(optional, recommended — with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) for `@citekey` matching)*
 - [Node.js](https://nodejs.org/) LTS *(only if building the `.vsix` from source)*
 
-Install the latest `.vsix` from **[Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases)** (or build from source below):
+Install **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) from the **VS Code Marketplace** or **Open VSX Registry** (used by Antigravity IDE, Cursor, and VSCodium), grab a `.vsix` from **[Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases)**, or build from source:
 
 ```bash
 git clone https://github.com/stevieTheTurtle/open-scriptorium.git
 cd open-scriptorium
 npm ci
-npm run build
-npx --yes @vscode/vsce package --no-dependencies
+npm run package
 ```
 
-Install `open-scriptorium-0.1.0.vsix` via **Extensions → `...` → Install from VSIX...** (or `code --install-extension open-scriptorium-0.1.0.vsix`), then:
+Install the `.vsix` via **Extensions → `...` → Install from VSIX...** (or `code --install-extension open-scriptorium-<version>.vsix`), then:
 
 1. Open a `.tex` file and press `Ctrl+Enter` (`Cmd+Enter` on macOS) to compile and preview.
 2. Run **`Open Scriptorium: Research Assistant: Set Up / Configure`** from the Command Palette to create `~/.open-scriptorium/research-assistant/.venv`, connect your paper index & Zotero library, and register the MCP server + citation-evidence skill across Antigravity IDE, Claude Code, and VS Code.
@@ -108,7 +108,8 @@ On macOS, use `Cmd` in place of `Ctrl`. All commands are also in the Command Pal
 | `openScriptorium.mainFile` | *(empty)* | Document to compile, relative to the workspace folder |
 | `openScriptorium.outDir` | `.scriptorium/build` | Folder for the PDF and SyncTeX files |
 | `openScriptorium.copyPdfTo` | *(empty)* | Also copy the PDF here after a successful build |
-| `openScriptorium.tectonicPath` | *(empty)* | Tectonic executable; empty means look on `PATH` |
+| `openScriptorium.tectonicPath` | *(empty)* | Tectonic executable; empty uses `PATH` or `~/.open-scriptorium/bin/` |
+| `openScriptorium.tectonic.autoInstall` | `true` | Automatically download Tectonic into `~/.open-scriptorium/bin/` on first compile when not found |
 | `openScriptorium.compile.trigger` | `save` | `save`, `typing` or `off` |
 | `openScriptorium.compile.typingDelayMs` | `2800` | Wait after the last keystroke in `typing` mode |
 | `openScriptorium.languageFeatures.enabled` | `true` | Completion and outline; turn off if another LaTeX extension provides them |
@@ -141,8 +142,8 @@ The default output folder ignores itself in Git, so build files stay out of your
 - [x] Citation evidence: hover a citation in the PDF to see verbatim quotes, second-hand citing phrases, and Zotero verification markers
 - [x] Bundled Research Assistant MCP server, Zotero sync, and 1-click multi-PC setup
 - [x] Packaged `.vsix` releases
-- [ ] Automatic Tectonic installation on first use
-- [ ] VS Code Marketplace and Open VSX publishing
+- [x] Automatic Tectonic installation on first use
+- [x] VS Code Marketplace and Open VSX publishing (`stevieTheTurtle.open-scriptorium`)
 - [ ] Full macOS and Linux verification
 
 ## Development
@@ -163,7 +164,7 @@ The end-to-end suite opens a real, isolated VS Code window with a throwaway prof
 |---|---|
 | `SETUP.md` | Full end-to-end setup guide for users and AI agents (VS Code, Antigravity, MCP, Zotero) |
 | `src/extension.ts` | Activation and commands |
-| `src/session.ts`, `src/compile.ts` | Build queue, Tectonic runner, diagnostics |
+| `src/session.ts`, `src/compile.ts`, `src/tectonicInstaller.ts` | Build queue, Tectonic runner, automatic Tectonic installer, diagnostics |
 | `src/project.ts` | Finding the main file and output paths |
 | `src/viewer.ts`, `src/webview/` | PDF tab and the PDF.js page inside it |
 | `src/synctex.ts`, `src/reveal.ts` | SyncTeX lookups and exact-word matching |

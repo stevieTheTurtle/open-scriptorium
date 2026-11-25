@@ -10,7 +10,7 @@ interface Run {
   mode: 'fixture' | 'thesis';
 }
 
-const EXTENSION_ID = 'open-scriptorium.open-scriptorium';
+const EXTENSION_ID = 'stevieTheTurtle.open-scriptorium';
 
 async function waitFor<T>(what: string, probe: () => T | undefined | null | false, timeoutMs = 20000): Promise<T> {
   const started = Date.now();

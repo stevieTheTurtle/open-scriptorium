@@ -223,6 +223,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     }),
     vscode.commands.registerCommand('openScriptorium.compile', () => compile({})),
     vscode.commands.registerCommand('openScriptorium.compileClean', () => compile({ clean: true })),
+    vscode.commands.registerCommand('openScriptorium.installTectonic', () => session.installTectonicCommand()),
     vscode.commands.registerCommand('openScriptorium.openPreview', openPreview),
     vscode.commands.registerCommand('openScriptorium.syncToPdf', syncToPdf),
     vscode.commands.registerCommand('openScriptorium.syncToCode', syncToCode),

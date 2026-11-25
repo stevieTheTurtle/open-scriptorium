@@ -1,0 +1,97 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish_marketplaces:
+        description: 'Publish to VS Code Marketplace and Open VSX (requires VSCE_PAT / OVSX_PAT secrets)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Read version and verify tag
+        id: meta
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          NAME=$(node -p "require('./package.json').name")
+          VSIX="${NAME}-${VERSION}.vsix"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "vsix=${VSIX}" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            EXPECTED="v${VERSION}"
+            if [[ "${GITHUB_REF_NAME}" != "${EXPECTED}" ]]; then
+              echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version (${EXPECTED})."
+              exit 1
+            fi
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Package VSIX
+        run: npx --yes @vscode/vsce package --no-dependencies -o "${{ steps.meta.outputs.vsix }}"
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.vsix }}
+          path: ${{ steps.meta.outputs.vsix }}
+
+      - name: Create GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.meta.outputs.vsix }}
+          generate_release_notes: true
+
+      - name: Publish to VS Code Marketplace
+        if: github.ref_type == 'tag' || inputs.publish_marketplaces
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        shell: bash
+        run: |
+          if [[ -z "${VSCE_PAT}" ]]; then
+            echo "::notice::VSCE_PAT secret is not set; skipping VS Code Marketplace publish."
+            exit 0
+          fi
+          npx --yes @vscode/vsce publish --packagePath "${{ steps.meta.outputs.vsix }}" -p "${VSCE_PAT}"
+
+      - name: Publish to Open VSX Registry
+        if: github.ref_type == 'tag' || inputs.publish_marketplaces
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        shell: bash
+        run: |
+          if [[ -z "${OVSX_PAT}" ]]; then
+            echo "::notice::OVSX_PAT secret is not set; skipping Open VSX publish."
+            exit 0
+          fi
+          npx --yes ovsx publish "${{ steps.meta.outputs.vsix }}" -p "${OVSX_PAT}"

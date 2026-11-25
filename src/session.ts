@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { findOnPath, runTectonic, type CompileResult } from './compile.ts';
 import type { Issue } from './issues.ts';
 import { CONFIG_SECTION, ignoreDefaultOutDir, type Project, type ProjectResolver } from './project.ts';
+import { installTectonic, managedTectonicPath, type InstallTectonicResult } from './tectonicInstaller.ts';
 import type { PdfViewer } from './viewer.ts';
 
 const TECTONIC_INSTALL_URL = 'https://tectonic-typesetting.github.io/book/latest/installation/';
@@ -57,6 +58,8 @@ export class CompileSession implements vscode.Disposable {
   private readonly viewer: PdfViewer;
   private current: Promise<FinishedCompile | undefined> | undefined;
   private pending: Pending | undefined;
+  private installing: Promise<InstallTectonicResult | null> | undefined;
+  private autoInstallFailed = false;
 
   constructor(projects: ProjectResolver, viewer: PdfViewer) {
     this.projects = projects;
@@ -121,10 +124,10 @@ export class CompileSession implements vscode.Disposable {
       if (manual) void vscode.window.showWarningMessage('Open Scriptorium: no main LaTeX file found. Set "openScriptorium.mainFile".');
       return undefined;
     }
-    const executable = this.findTectonic(project);
+    const { executable, configuredMissing } = await this.resolveOrInstallTectonic(project, manual);
     if (!executable) {
       this.status.text = '$(error) LaTeX: Tectonic not found';
-      if (manual) void this.reportMissingTectonic();
+      if (manual) void this.reportMissingTectonic(configuredMissing);
       return undefined;
     }
 
@@ -193,25 +196,163 @@ export class CompileSession implements vscode.Disposable {
     return uris;
   }
 
-  private findTectonic(project: Project): string | null {
+  private findTectonic(project: Project): { executable: string | null; configuredMissing: boolean } {
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION, project.folder?.uri);
-    const setting = config.get<string>('tectonicPath', '');
+    const setting = config.get<string>('tectonicPath', '').trim();
     if (setting) {
       const resolved = path.isAbsolute(setting) ? setting : path.join(project.folder?.uri.fsPath ?? project.mainDir, setting);
-      return existsSync(resolved) ? resolved : null;
+      return existsSync(resolved) ? { executable: resolved, configuredMissing: false } : { executable: null, configuredMissing: true };
     }
-    return findOnPath('tectonic');
+    const onPath = findOnPath('tectonic');
+    if (onPath) return { executable: onPath, configuredMissing: false };
+    const managed = managedTectonicPath();
+    if (existsSync(managed)) return { executable: managed, configuredMissing: false };
+    return { executable: null, configuredMissing: false };
   }
 
-  private async reportMissingTectonic(): Promise<void> {
+  private async resolveOrInstallTectonic(
+    project: Project,
+    manual: boolean,
+  ): Promise<{ executable: string | null; configuredMissing: boolean }> {
+    const found = this.findTectonic(project);
+    if (found.executable || found.configuredMissing) return found;
+
+    const autoInstall = vscode.workspace
+      .getConfiguration(CONFIG_SECTION, project.folder?.uri)
+      .get<boolean>('tectonic.autoInstall', true);
+    if (!autoInstall || (!manual && this.autoInstallFailed)) {
+      return found;
+    }
+
+    const installed = await this.installManagedTectonic(false);
+    if (installed) {
+      this.autoInstallFailed = false;
+      return { executable: installed.executable, configuredMissing: false };
+    }
+    this.autoInstallFailed = true;
+    return { executable: null, configuredMissing: false };
+  }
+
+  /** Downloads and installs the managed Tectonic binary into ~/.open-scriptorium/bin/. */
+  installManagedTectonic(showErrors = true): Promise<InstallTectonicResult | null> {
+    if (this.installing) return this.installing;
+    const run = this.performTectonicInstall(showErrors).finally(() => {
+      this.installing = undefined;
+    });
+    this.installing = run;
+    return run;
+  }
+
+  async installTectonicCommand(): Promise<void> {
+    if (!vscode.workspace.isTrusted) {
+      void vscode.window.showWarningMessage('Open Scriptorium only installs tools in trusted workspaces.');
+      return;
+    }
+    const result = await this.installManagedTectonic(true);
+    if (!result) return;
+    this.autoInstallFailed = false;
+    const configured = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('tectonicPath', '').trim();
+    if (configured) {
+      const openSettings = 'Open Settings';
+      const choice = await vscode.window.showInformationMessage(
+        `Open Scriptorium installed ${result.version} to ${result.executable}. Note: "openScriptorium.tectonicPath" is currently set and takes precedence.`,
+        openSettings,
+      );
+      if (choice === openSettings) {
+        void vscode.commands.executeCommand('workbench.action.openSettings', `${CONFIG_SECTION}.tectonicPath`);
+      }
+    } else {
+      void vscode.window.showInformationMessage(`Open Scriptorium installed ${result.version} to ${result.executable}.`);
+    }
+  }
+
+  private async performTectonicInstall(showErrors: boolean): Promise<InstallTectonicResult | null> {
+    this.status.text = '$(cloud-download) LaTeX: installing Tectonic';
+    this.status.tooltip = 'Downloading and installing Tectonic...';
+    this.output.appendLine('Installing managed Tectonic binary...');
+
+    let cancelled = false;
+    try {
+      const result = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: 'Open Scriptorium: Installing Tectonic',
+          cancellable: true,
+        },
+        async (progress, token) => {
+          const controller = new AbortController();
+          const onSessionAbort = () => controller.abort();
+          this.abort.signal.addEventListener('abort', onSessionAbort, { once: true });
+          const cancelSub = token.onCancellationRequested(() => {
+            cancelled = true;
+            controller.abort();
+          });
+
+          let lastPercent = 0;
+          try {
+            return await installTectonic({
+              signal: controller.signal,
+              onProgress: (p) => {
+                if (p.phase === 'downloading' && p.totalBytes && p.receivedBytes !== undefined) {
+                  const pct = Math.min(100, Math.floor((p.receivedBytes / p.totalBytes) * 100));
+                  const increment = Math.max(0, pct - lastPercent);
+                  lastPercent = pct;
+                  const mbDone = (p.receivedBytes / 1_048_576).toFixed(1);
+                  const mbTotal = (p.totalBytes / 1_048_576).toFixed(1);
+                  progress.report({ message: `${p.message} (${mbDone} / ${mbTotal} MB)`, increment });
+                } else {
+                  progress.report({ message: p.message });
+                }
+              },
+            });
+          } finally {
+            cancelSub.dispose();
+            this.abort.signal.removeEventListener('abort', onSessionAbort);
+          }
+        },
+      );
+      this.output.appendLine(`Installed ${result.version} (${result.tag}) to ${result.executable}.`);
+      this.status.text = '$(check) LaTeX';
+      this.status.tooltip = `Tectonic ready (${result.version}). Click to compile.`;
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.output.appendLine(cancelled ? 'Tectonic installation cancelled.' : `Tectonic installation failed: ${message}`);
+      this.status.text = '$(error) LaTeX: Tectonic not found';
+      if (showErrors && !cancelled) {
+        const install = 'How to Install';
+        const openSettings = 'Open Settings';
+        const choice = await vscode.window.showErrorMessage(
+          `Open Scriptorium could not install Tectonic automatically: ${message}`,
+          install,
+          openSettings,
+        );
+        if (choice === install) void vscode.env.openExternal(vscode.Uri.parse(TECTONIC_INSTALL_URL));
+        if (choice === openSettings) {
+          void vscode.commands.executeCommand('workbench.action.openSettings', `${CONFIG_SECTION}.tectonicPath`);
+        }
+      }
+      return null;
+    }
+  }
+
+  private async reportMissingTectonic(configuredMissing: boolean): Promise<void> {
+    const installAuto = 'Install Automatically';
     const openSettings = 'Open Settings';
-    const install = 'How to Install';
-    const choice = await vscode.window.showErrorMessage(
-      'Open Scriptorium could not find Tectonic. Install it, or set "openScriptorium.tectonicPath".',
-      install,
-      openSettings,
-    );
-    if (choice === install) void vscode.env.openExternal(vscode.Uri.parse(TECTONIC_INSTALL_URL));
+    const installDocs = 'How to Install';
+    const message = configuredMissing
+      ? 'Open Scriptorium could not find Tectonic at the path set in "openScriptorium.tectonicPath".'
+      : 'Open Scriptorium could not find Tectonic. Install it automatically, install it manually, or set "openScriptorium.tectonicPath".';
+    const buttons = configuredMissing ? [openSettings, installDocs] : [installAuto, installDocs, openSettings];
+    const choice = await vscode.window.showErrorMessage(message, ...buttons);
+    if (choice === installAuto) {
+      const installed = await this.installManagedTectonic(true);
+      if (installed) {
+        this.autoInstallFailed = false;
+        void this.request({ manual: true });
+      }
+    }
+    if (choice === installDocs) void vscode.env.openExternal(vscode.Uri.parse(TECTONIC_INSTALL_URL));
     if (choice === openSettings) void vscode.commands.executeCommand('workbench.action.openSettings', `${CONFIG_SECTION}.tectonicPath`);
   }
 

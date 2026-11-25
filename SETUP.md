@@ -53,7 +53,7 @@ Runtime state on each PC (kept outside the extension folder so upgrades never wi
 | Tool | Required For | Install |
 |---|---|---|
 | **VS Code ≥ 1.99** or **Antigravity IDE** | Running the extension | [code.visualstudio.com](https://code.visualstudio.com/) / Antigravity |
-| **Tectonic** | Compiling `.tex` to PDF | `winget install Tectonic.Tectonic` (Win) / `brew install tectonic` (macOS) / [tectonic releases](https://tectonic-typesetting.github.io/book/latest/installation/) |
+| **Tectonic** *(auto-installed)* | Compiling `.tex` to PDF | Installed automatically into `~/.open-scriptorium/bin/` on first compile, or install manually (`winget install Tectonic.Tectonic` / `brew install tectonic`) |
 | **Python ≥ 3.10** | Research Assistant + citation status | `winget install Python.Python.3.12` (Win) / `brew install python@3.12` (macOS) |
 | **uv** *(optional, recommended)* | 10× faster `.venv` & pip install | `winget install astral-sh.uv` / `curl -LsSf https://astral.sh/uv/install.sh \| sh` |
 | **Node.js LTS (≥ 20)** *(only to build from source)* | Building `.vsix` from repo | [nodejs.org](https://nodejs.org/) |
@@ -64,25 +64,31 @@ Runtime state on each PC (kept outside the extension folder so upgrades never wi
 
 ## Part 1: Install Open Scriptorium (VS Code / Antigravity IDE)
 
-### Option A — Install from a `.vsix` file (fastest)
-1. Get `open-scriptorium-<version>.vsix` (built via Option B or downloaded from releases).
+### Option A — Install from Marketplace / Open VSX (recommended)
+Search for **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) in the Extensions view (`Ctrl+Shift+X`), or install via CLI:
+```bash
+code --install-extension stevieTheTurtle.open-scriptorium
+```
+
+### Option B — Install from a `.vsix` file
+1. Download `open-scriptorium-<version>.vsix` from [GitHub Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases) (or build via Option C).
 2. Install it:
-   - **GUI (VS Code & Antigravity IDE):** Open the **Extensions** view (`Ctrl+Shift+X`) → click **`...`** (top-right) → **Install from VSIX...** → select `open-scriptorium-0.1.0.vsix`.
+   - **GUI (VS Code & Antigravity IDE):** Open the **Extensions** view (`Ctrl+Shift+X`) → click **`...`** (top-right) → **Install from VSIX...** → select `open-scriptorium-<version>.vsix`.
    - **VS Code CLI:**
      ```bash
-     code --install-extension /path/to/open-scriptorium-0.1.0.vsix
+     code --install-extension /path/to/open-scriptorium-<version>.vsix
      ```
 
-### Option B — Build & package from source
+### Option C — Build & package from source
 ```bash
 git clone https://github.com/stevieTheTurtle/open-scriptorium.git
 cd open-scriptorium
 npm ci
-npm run build
+npm run typecheck
 npm test
-npx --yes @vscode/vsce package --no-dependencies
+npm run package
 ```
-This produces `open-scriptorium-0.1.0.vsix` in the repo root. Install it using Option A.
+This produces `open-scriptorium-<version>.vsix` in the repo root. Install it using Option B.
 
 ### Configure a LaTeX workspace (`.vscode/settings.json`)
 Add only the settings your project needs (all paths are relative to the workspace root):
@@ -98,7 +104,7 @@ Add only the settings your project needs (all paths are relative to the workspac
 }
 ```
 
-- Leave `openScriptorium.tectonicPath` empty if `tectonic` is on your `PATH` (otherwise point to `tectonic.exe` / `tectonic`).
+- Leave `openScriptorium.tectonicPath` empty to use `tectonic` on `PATH` or let Open Scriptorium auto-install Tectonic into `~/.open-scriptorium/bin/` on first compile (or set an explicit path to `tectonic.exe` / `tectonic`).
 - Leave `openScriptorium.citations.statusCommand` **empty** — v0.1.0+ runs the bundled `citation_status.py` bridge automatically whenever a Research Assistant `metadata.db` is detected.
 - Open any `.tex` file and press **`Ctrl+Enter`** (`Cmd+Enter` on macOS) to compile and open the PDF preview.
 
@@ -139,8 +145,8 @@ Inside **VS Code** or **Antigravity IDE**:
 ### Step 1 — Locate the bundled source
 Either from a git clone of `open-scriptorium` or from an installed `.vsix` extension directory:
 - Git clone: `<REPO>/research-assistant` and `<REPO>/agent-plugin`
-- Installed Antigravity extension: `<HOME>/.antigravity-ide/extensions/open-scriptorium.open-scriptorium-*/`
-- Installed VS Code extension: `<HOME>/.vscode/extensions/open-scriptorium.open-scriptorium-*/`
+- Installed Antigravity extension: `<HOME>/.antigravity-ide/extensions/stevieTheTurtle.open-scriptorium-*/`
+- Installed VS Code extension: `<HOME>/.vscode/extensions/stevieTheTurtle.open-scriptorium-*/`
 
 Set `INSTALL_DIR`:
 - Windows: `C:\Users\<USER>\.open-scriptorium\research-assistant`
