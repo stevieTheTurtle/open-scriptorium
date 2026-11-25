@@ -5,21 +5,52 @@ const vscode = acquireVsCodeApi();
 const config = JSON.parse(document.getElementById('config').textContent);
 
 const dom = Object.fromEntries(
-  ['viewer', 'empty', 'prev', 'next', 'page', 'total', 'zoom', 'zoom-in', 'zoom-out', 'fit', 'message', 'to-code', 'compile'].map((id) => [
-    id,
-    document.getElementById(id),
-  ]),
+  [
+    'viewer',
+    'empty',
+    'prev',
+    'next',
+    'page',
+    'total',
+    'zoom',
+    'zoom-in',
+    'zoom-out',
+    'fit',
+    'message',
+    'compile-status',
+    'compile-bar',
+    'auto-compile',
+    'to-code',
+    'compile',
+    'toggle-outline',
+    'outline-panel',
+    'outline-resizer',
+    'outline-tree',
+    'outline-close',
+    'toggle-find',
+    'find-bar',
+    'find-input',
+    'find-count',
+    'find-case',
+    'find-prev',
+    'find-next',
+    'find-close',
+  ].map((id) => [id, document.getElementById(id)]),
 );
 
 const saved = vscode.getState() ?? {};
 const view = {
   zoom: saved.zoom ?? 100, // percent of the width that fits the pane
   scale: 1,
-  pages: [], // { num, page, width, height, div, canvas, textDiv, rendered, rendering, task, textContent }
+  pages: [], // { num, page, width, height, div, canvas, textDiv, rendered, rendering, task, textContent, plainText }
   generation: 0,
   document: null,
   pageNumber: 1,
   latestLoad: 0,
+  needsLayout: false,
+  deferredAnchor: null,
+  outlineOpen: Boolean(saved.outlineOpen),
+  outlineWidth: Number.isFinite(saved.outlineWidth) ? saved.outlineWidth : 240,
 };
 let pendingAnchor = saved.anchor ?? null;
 
@@ -27,6 +58,10 @@ const RENDER_MARGIN_PX = 800;
 const EVICT_MARGIN_PX = 5000;
 const MIN_ZOOM = 30;
 const MAX_ZOOM = 300;
+const MAX_CONCURRENT_RENDERS = 3;
+
+let activeRenders = 0;
+const renderWaiters = new Map(); // pageNum -> Array<() => void>
 
 // ---- Loading --------------------------------------------------------------------------------
 
@@ -69,9 +104,13 @@ async function openDocument(data) {
   }
 }
 
+function isViewerVisible() {
+  return dom.viewer.clientWidth > 0 && dom.viewer.clientHeight > 0;
+}
+
 async function loadPdf(data) {
   const loadId = ++view.latestLoad;
-  const anchor = pendingAnchor ?? currentAnchor();
+  const anchor = pendingAnchor ?? view.deferredAnchor ?? currentAnchor();
   pendingAnchor = null;
 
   let opened;
@@ -96,21 +135,31 @@ async function loadPdf(data) {
     return;
   }
 
-  // Old canvases stay in the new page shells until the fresh ones are painted, so a recompile
-  // does not flash an empty pane.
+  // Cancel any in-flight page renders cleanly before replacing DOM shells.
+  for (const p of view.pages) {
+    try {
+      p.task?.cancel();
+    } catch {
+      // Ignore already-finished tasks
+    }
+  }
+  renderWaiters.clear();
+
+  // Old canvases stay in the new page shells as placeholders until fresh ones are painted,
+  // avoiding a white flash during rebuilds.
   const fragment = document.createDocumentFragment();
   for (const p of pages) {
     p.div = document.createElement('div');
     p.div.className = 'pdf-page';
     p.div.dataset.page = String(p.num);
     const previous = view.pages[p.num - 1];
-    if (previous?.canvas && previous.width === p.width && previous.height === p.height) {
+    if (previous?.canvas && previous.rendered && previous.width === p.width && previous.height === p.height) {
       p.canvas = previous.canvas;
       p.div.appendChild(p.canvas);
     }
     fragment.appendChild(p.div);
   }
-  for (const p of view.pages) p.task?.cancel();
+
   const previousDocument = view.document;
   view.document = opened;
   view.pages = pages;
@@ -121,11 +170,32 @@ async function loadPdf(data) {
 
   dom.total.textContent = `/ ${pages.length}`;
   dom.page.max = String(pages.length);
-  applyScale();
-  restoreAnchor(anchor);
-  renderVisiblePages();
-  updatePageIndicator();
+
+  if (isViewerVisible()) {
+    view.needsLayout = false;
+    view.deferredAnchor = null;
+    applyScale();
+    restoreAnchor(anchor);
+    renderVisiblePages();
+    // Run once more on next animation frame after layout metrics are guaranteed flushed.
+    requestAnimationFrame(() => {
+      if (loadId === view.latestLoad && isViewerVisible()) renderVisiblePages();
+    });
+    updatePageIndicator();
+  } else {
+    // Tab is currently hidden (0x0 viewport): defer scale & rendering until visible so we
+    // never compute NaN scroll anchors or spawn renders for all 77 pages simultaneously.
+    view.needsLayout = true;
+    view.deferredAnchor = anchor;
+  }
+
   setMessage('');
+  void loadOutline(opened.doc, loadId);
+  if (findState.open && findState.query) {
+    void runFind(findState.query, { preserveIndex: true });
+  } else {
+    clearFindHighlights();
+  }
   vscode.postMessage({ type: 'loaded', numPages: pages.length });
 }
 
@@ -139,6 +209,7 @@ function computeScale() {
 }
 
 function applyScale() {
+  if (!view.pages.length || !isViewerVisible()) return;
   view.scale = computeScale();
   for (const p of view.pages) {
     p.div.style.width = `${Math.floor(p.width * view.scale)}px`;
@@ -157,13 +228,34 @@ function applyScale() {
 }
 
 function renderVisiblePages() {
-  const top = dom.viewer.scrollTop - RENDER_MARGIN_PX;
-  const bottom = dom.viewer.scrollTop + dom.viewer.clientHeight + RENDER_MARGIN_PX;
+  if (!view.pages.length || !isViewerVisible()) return;
+  const viewTop = dom.viewer.scrollTop;
+  const viewMid = viewTop + dom.viewer.clientHeight / 2;
+  const top = viewTop - RENDER_MARGIN_PX;
+  const bottom = viewTop + dom.viewer.clientHeight + RENDER_MARGIN_PX;
+
+  const toRender = [];
   for (const p of view.pages) {
     const pageTop = p.div.offsetTop;
-    const pageBottom = pageTop + p.div.offsetHeight;
-    if (pageBottom >= top && pageTop <= bottom) void renderPage(p);
-    else if (p.canvas && (pageBottom < top - EVICT_MARGIN_PX || pageTop > bottom + EVICT_MARGIN_PX)) evictPage(p);
+    const pageHeight = p.div.offsetHeight;
+    if (!pageHeight) continue;
+    const pageBottom = pageTop + pageHeight;
+    if (pageBottom >= top && pageTop <= bottom) {
+      if (!p.rendered && !p.rendering) {
+        const dist = Math.abs(pageTop + pageHeight / 2 - viewMid);
+        toRender.push({ p, dist });
+      }
+    } else if (p.canvas && (pageBottom < top - EVICT_MARGIN_PX || pageTop > bottom + EVICT_MARGIN_PX)) {
+      evictPage(p);
+    }
+  }
+
+  // Prioritize pages closest to the viewport center and cap concurrency so Chromium never
+  // exhausts GPU canvas memory on rapid scrolls or reloads.
+  toRender.sort((a, b) => a.dist - b.dist);
+  for (const { p } of toRender) {
+    if (activeRenders >= MAX_CONCURRENT_RENDERS) break;
+    void renderPage(p);
   }
 }
 
@@ -176,17 +268,36 @@ function evictPage(p) {
   p.rendered = false;
 }
 
-async function renderPage(p) {
+function notifyPageRendered(pageNum) {
+  const list = renderWaiters.get(pageNum);
+  if (!list) return;
+  renderWaiters.delete(pageNum);
+  for (const fn of list) fn();
+}
+
+function ensurePageRendered(p) {
+  if (p.rendered) return Promise.resolve();
+  return new Promise((resolve) => {
+    const list = renderWaiters.get(p.num) ?? [];
+    list.push(resolve);
+    renderWaiters.set(p.num, list);
+    void renderPage(p, true);
+  });
+}
+
+async function renderPage(p, bypassLimit = false) {
   if (p.rendered || p.rendering) return;
+  if (!bypassLimit && activeRenders >= MAX_CONCURRENT_RENDERS) return;
   const generation = view.generation;
   p.rendering = true;
+  activeRenders++;
   try {
     const scale = view.scale;
     const viewport = p.page.getViewport({ scale });
     const dpr = window.devicePixelRatio || 1;
     const canvas = document.createElement('canvas');
-    canvas.width = Math.floor(viewport.width * dpr);
-    canvas.height = Math.floor(viewport.height * dpr);
+    canvas.width = Math.max(1, Math.floor(viewport.width * dpr));
+    canvas.height = Math.max(1, Math.floor(viewport.height * dpr));
     canvas.style.width = `${Math.floor(viewport.width)}px`;
     canvas.style.height = `${Math.floor(viewport.height)}px`;
     p.task = p.page.render({
@@ -198,29 +309,45 @@ async function renderPage(p) {
     await p.task.promise;
     if (generation !== view.generation) return; // zoom or reload happened meanwhile
 
-    p.textContent ??= await p.page.getTextContent();
-    const textDiv = document.createElement('div');
-    textDiv.className = 'textLayer';
-    await new pdfjsLib.TextLayer({ textContentSource: p.textContent, container: textDiv, viewport }).render();
-    if (generation !== view.generation) return;
-
+    // Attach the freshly painted canvas immediately so a TextLayer hiccup can NEVER leave
+    // the page stuck as a blank white box.
     p.canvas?.remove();
-    p.textDiv?.remove();
     p.canvas = canvas;
-    p.textDiv = textDiv;
     p.div.prepend(canvas);
-    p.div.appendChild(textDiv);
     p.rendered = true;
+
+    try {
+      p.textContent ??= await p.page.getTextContent();
+      if (generation !== view.generation) return;
+      const textDiv = document.createElement('div');
+      textDiv.className = 'textLayer';
+      await new pdfjsLib.TextLayer({ textContentSource: p.textContent, container: textDiv, viewport }).render();
+      if (generation !== view.generation) return;
+      p.textDiv?.remove();
+      p.textDiv = textDiv;
+      p.div.appendChild(textDiv);
+      if (findState.query && findState.matches.length) {
+        applyFindHighlightsForPage(p);
+      }
+    } catch (textErr) {
+      if (textErr?.name !== 'RenderingCancelledException') {
+        console.warn('PDF text layer failed', p.num, textErr);
+      }
+    }
+
     void pageCiteLinks(p).then(() => {
       if (generation === view.generation) paintCiteMarks(p);
     });
+    notifyPageRendered(p.num);
   } catch (error) {
     if (error?.name !== 'RenderingCancelledException') console.warn('PDF page render failed', p.num, error);
   } finally {
     p.rendering = false;
     p.task = null;
-    // A zoom during rendering leaves the page stale: try again at the new scale.
-    if (!p.rendered && generation !== view.generation) renderVisiblePages();
+    activeRenders = Math.max(0, activeRenders - 1);
+    notifyPageRendered(p.num);
+    // Pump remaining visible pages in the queue or re-render after a zoom/reload.
+    if (isViewerVisible()) renderVisiblePages();
   }
 }
 
@@ -236,32 +363,48 @@ function pageAtY(y) {
 }
 
 function currentAnchor() {
-  if (!view.pages.length) return null;
+  if (!view.pages.length || !isViewerVisible()) return null;
   const p = pageAtY(dom.viewer.scrollTop);
-  return { num: p.num, fraction: (dom.viewer.scrollTop - p.div.offsetTop) / p.div.offsetHeight };
+  if (!p || !p.div.offsetHeight) return { num: view.pageNumber || 1, fraction: 0 };
+  const raw = (dom.viewer.scrollTop - p.div.offsetTop) / p.div.offsetHeight;
+  const fraction = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0;
+  return { num: p.num, fraction };
 }
 
 function restoreAnchor(anchor) {
-  if (!anchor) return;
-  const p = view.pages[Math.min(anchor.num, view.pages.length) - 1];
-  if (p) dom.viewer.scrollTop = p.div.offsetTop + anchor.fraction * p.div.offsetHeight;
+  if (!anchor || !view.pages.length) return;
+  const num = Math.max(1, Math.min(anchor.num || 1, view.pages.length));
+  const p = view.pages[num - 1];
+  const fraction = Number.isFinite(anchor.fraction) ? Math.max(0, Math.min(1, anchor.fraction)) : 0;
+  if (p) dom.viewer.scrollTop = p.div.offsetTop + fraction * p.div.offsetHeight;
 }
 
 function saveState() {
-  vscode.setState({ zoom: view.zoom, anchor: currentAnchor() });
+  const anchor = currentAnchor() ?? view.deferredAnchor ?? saved.anchor ?? null;
+  vscode.setState({ zoom: view.zoom, anchor, outlineOpen: view.outlineOpen, outlineWidth: view.outlineWidth });
 }
 
 function updatePageIndicator() {
-  if (!view.pages.length) return;
+  if (!view.pages.length || !isViewerVisible()) return;
   const p = pageAtY(dom.viewer.scrollTop + dom.viewer.clientHeight / 3);
+  if (!p) return;
   view.pageNumber = p.num;
   if (document.activeElement !== dom.page) dom.page.value = String(p.num);
+  updateActiveOutline();
   vscode.postMessage({ type: 'state', page: p.num, zoom: view.zoom });
 }
 
-function scrollToPage(num) {
+function scrollToPage(num, pdfY = null, smooth = false) {
   const p = view.pages[Math.max(1, Math.min(num, view.pages.length)) - 1];
-  if (p) dom.viewer.scrollTop = p.div.offsetTop - 8;
+  if (!p) return;
+  let offset = p.div.offsetTop - 8;
+  if (pdfY !== null && Number.isFinite(pdfY)) {
+    const topFromPageTop = Math.max(0, (p.height - pdfY) * view.scale);
+    offset = Math.max(0, p.div.offsetTop + topFromPageTop - 24);
+  }
+  const far = Math.abs(offset - dom.viewer.scrollTop) > 2 * dom.viewer.clientHeight;
+  dom.viewer.scrollTo({ top: Math.max(0, offset), behavior: smooth && !far ? 'smooth' : 'auto' });
+  renderVisiblePages();
 }
 
 function setZoom(zoom) {
@@ -276,6 +419,500 @@ function setZoom(zoom) {
 
 function setMessage(text) {
   dom.message.textContent = text;
+}
+
+// ---- Compilation status UI & Auto-compile toggle --------------------------------------------
+
+let statusFadeTimer = null;
+
+function applyCompileStatus(status) {
+  clearTimeout(statusFadeTimer);
+  const pill = dom['compile-status'];
+  if (!status || status.state === 'idle') {
+    dom['compile-bar'].hidden = true;
+    pill.hidden = true;
+    pill.className = 'status-pill';
+    return;
+  }
+
+  if (status.state === 'compiling') {
+    dom['compile-bar'].hidden = false;
+    pill.hidden = false;
+    pill.className = 'status-pill compiling';
+    pill.textContent = 'Compiling…';
+    pill.title = 'Tectonic is compiling the document';
+    dom.compile.disabled = true;
+    return;
+  }
+
+  dom['compile-bar'].hidden = true;
+  dom.compile.disabled = false;
+
+  if (status.state === 'success') {
+    const secs = status.durationMs ? ` (${(status.durationMs / 1000).toFixed(1)}s)` : '';
+    const warns = status.warnings || 0;
+    pill.hidden = false;
+    if (warns > 0) {
+      pill.className = 'status-pill warn';
+      pill.textContent = `✓ Updated${secs} · ${warns} warn`;
+      pill.title = 'Click to view compiler log & Problems';
+    } else {
+      pill.className = 'status-pill success';
+      pill.textContent = `✓ Updated${secs}`;
+      pill.title = 'Compilation succeeded';
+    }
+    statusFadeTimer = setTimeout(() => {
+      if (pill.classList.contains('success')) pill.hidden = true;
+    }, 3500);
+    return;
+  }
+
+  if (status.state === 'error') {
+    const errs = status.errors || 0;
+    pill.hidden = false;
+    pill.className = 'status-pill error';
+    pill.textContent = errs ? `✕ ${errs} ${errs === 1 ? 'error' : 'errors'} · Log` : '✕ Compile failed · Log';
+    pill.title = status.message || 'Compilation failed — click to open compiler log & Problems';
+  }
+}
+
+function applyAutoCompileMode(mode) {
+  const active = mode !== 'off';
+  const btn = dom['auto-compile'];
+  btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  btn.title = active
+    ? `Auto-compile is ON (${mode}). Click to disable automatic builds on save.`
+    : 'Auto-compile is OFF. Click to re-enable automatic compilation when saving LaTeX files.';
+}
+
+// ---- Hierarchical PDF Outline Navigator -----------------------------------------------------
+
+const outlineState = {
+  flat: [], // { page, pdfY, rowEl }
+  activeRow: null,
+};
+
+function applyOutlineWidth(widthPx) {
+  const maxW = Math.max(220, Math.floor(window.innerWidth * 0.65));
+  const clamped = Math.max(150, Math.min(maxW, Math.round(widthPx)));
+  view.outlineWidth = clamped;
+  dom['outline-panel'].style.width = `${clamped}px`;
+}
+
+function setOutlineOpen(open, persist = true) {
+  view.outlineOpen = Boolean(open);
+  dom['outline-panel'].hidden = !view.outlineOpen;
+  dom['outline-resizer'].hidden = !view.outlineOpen;
+  if (view.outlineOpen) applyOutlineWidth(view.outlineWidth);
+  dom['toggle-outline'].setAttribute('aria-pressed', view.outlineOpen ? 'true' : 'false');
+  if (persist) saveState();
+  // Re-fit zoom cleanly if the pane width changed.
+  if (view.pages.length && isViewerVisible()) {
+    requestAnimationFrame(() => setZoom(view.zoom));
+  }
+}
+
+function setupOutlineResizer() {
+  const resizer = dom['outline-resizer'];
+  let dragging = false;
+  let startX = 0;
+  let startWidth = 240;
+
+  resizer.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    dragging = true;
+    startX = event.clientX;
+    startWidth = dom['outline-panel'].getBoundingClientRect().width || view.outlineWidth;
+    resizer.classList.add('dragging');
+    document.body.classList.add('resizing-outline');
+    resizer.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+
+  resizer.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    applyOutlineWidth(startWidth + (event.clientX - startX));
+  });
+
+  const stopDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    resizer.classList.remove('dragging');
+    document.body.classList.remove('resizing-outline');
+    saveState();
+  };
+
+  resizer.addEventListener('pointerup', stopDrag);
+  resizer.addEventListener('pointercancel', stopDrag);
+  resizer.addEventListener('dblclick', () => {
+    applyOutlineWidth(240);
+    saveState();
+  });
+}
+
+setupOutlineResizer();
+
+async function resolveOutlineDest(doc, dest) {
+  try {
+    let explicit = dest;
+    if (typeof dest === 'string') explicit = await doc.getDestination(dest);
+    if (!Array.isArray(explicit) || !explicit.length) return null;
+    const ref = explicit[0];
+    const pageIndex = typeof ref === 'number' ? ref : await doc.getPageIndex(ref);
+    let pdfY = null;
+    if (explicit[1]?.name === 'XYZ' && typeof explicit[3] === 'number') pdfY = explicit[3];
+    else if ((explicit[1]?.name === 'FitH' || explicit[1]?.name === 'FitBH') && typeof explicit[2] === 'number') pdfY = explicit[2];
+    return { page: pageIndex + 1, pdfY };
+  } catch {
+    return null;
+  }
+}
+
+async function buildOutlineNodes(doc, items, depth) {
+  const out = [];
+  for (const item of items || []) {
+    const target = item.dest ? await resolveOutlineDest(doc, item.dest) : null;
+    const children = item.items?.length ? await buildOutlineNodes(doc, item.items, depth + 1) : [];
+    out.push({
+      title: String(item.title ?? '').trim() || '(Untitled)',
+      page: target?.page ?? null,
+      pdfY: target?.pdfY ?? null,
+      depth,
+      children,
+    });
+  }
+  return out;
+}
+
+function renderOutlineList(nodes, container) {
+  for (const node of nodes) {
+    const wrap = document.createElement('div');
+    wrap.className = 'outline-node';
+    // Collapse deeper sub-levels (subsections+) by default for large documents while keeping chapters & sections open.
+    if (node.depth >= 2 && node.children.length) wrap.classList.add('collapsed');
+
+    const row = document.createElement('div');
+    row.className = 'outline-row';
+    row.title = node.title;
+
+    const caret = document.createElement('span');
+    caret.className = node.children.length ? 'outline-caret' : 'outline-caret leaf';
+    caret.textContent = '▾';
+    if (node.children.length) {
+      caret.addEventListener('click', (e) => {
+        e.stopPropagation();
+        wrap.classList.toggle('collapsed');
+      });
+    }
+
+    const label = document.createElement('span');
+    label.className = 'outline-label';
+    label.textContent = node.title;
+
+    row.appendChild(caret);
+    row.appendChild(label);
+
+    if (node.page !== null) {
+      const pg = document.createElement('span');
+      pg.className = 'outline-page';
+      pg.textContent = String(node.page);
+      row.appendChild(pg);
+      outlineState.flat.push({ page: node.page, pdfY: node.pdfY, rowEl: row });
+    }
+
+    row.addEventListener('click', () => {
+      if (node.page !== null) scrollToPage(node.page, node.pdfY, true);
+      else if (node.children.length) wrap.classList.toggle('collapsed');
+    });
+
+    wrap.appendChild(row);
+
+    if (node.children.length) {
+      const kids = document.createElement('div');
+      kids.className = 'outline-children';
+      renderOutlineList(node.children, kids);
+      wrap.appendChild(kids);
+    }
+
+    container.appendChild(wrap);
+  }
+}
+
+async function loadOutline(doc, loadId) {
+  outlineState.flat = [];
+  outlineState.activeRow = null;
+  try {
+    const raw = await doc.getOutline();
+    if (loadId !== view.latestLoad) return;
+    const tree = await buildOutlineNodes(doc, raw, 0);
+    if (loadId !== view.latestLoad) return;
+    dom['outline-tree'].replaceChildren();
+    if (!tree.length) {
+      const empty = document.createElement('div');
+      empty.className = 'outline-empty';
+      empty.textContent = 'No outline bookmarks in this PDF.';
+      dom['outline-tree'].appendChild(empty);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    renderOutlineList(tree, frag);
+    dom['outline-tree'].appendChild(frag);
+    updateActiveOutline();
+  } catch {
+    dom['outline-tree'].replaceChildren();
+  }
+}
+
+function updateActiveOutline() {
+  if (!outlineState.flat.length || !view.pages.length || dom['outline-panel'].hidden) return;
+  const scrollY = dom.viewer.scrollTop + 48;
+  let best = null;
+  for (const item of outlineState.flat) {
+    const p = view.pages[item.page - 1];
+    if (!p) continue;
+    const y = p.div.offsetTop + (item.pdfY !== null ? Math.max(0, (p.height - item.pdfY) * view.scale) : 0);
+    if (y <= scrollY) best = item;
+  }
+  const nextRow = best?.rowEl ?? outlineState.flat[0]?.rowEl ?? null;
+  if (nextRow === outlineState.activeRow) return;
+  outlineState.activeRow?.classList.remove('active');
+  outlineState.activeRow = nextRow;
+  if (nextRow) {
+    nextRow.classList.add('active');
+    nextRow.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+// ---- In-PDF Text Search (Ctrl+F) ------------------------------------------------------------
+
+const findState = {
+  open: false,
+  query: '',
+  caseSensitive: false,
+  matches: [], // { pageNum, pageMatchIdx }
+  byPage: new Map(), // pageNum -> Array<{ globalIdx, start, length }>
+  activeIdx: -1,
+  searchGen: 0,
+};
+
+function openFindBar() {
+  findState.open = true;
+  dom['find-bar'].hidden = false;
+  const sel = window.getSelection()?.toString().trim();
+  if (sel && sel.length < 120 && !sel.includes('\n')) {
+    dom['find-input'].value = sel;
+  }
+  dom['find-input'].focus();
+  dom['find-input'].select();
+  if (dom['find-input'].value) void runFind(dom['find-input'].value, { preserveIndex: true });
+}
+
+function closeFindBar() {
+  findState.open = false;
+  findState.query = '';
+  findState.matches = [];
+  findState.byPage.clear();
+  findState.activeIdx = -1;
+  dom['find-bar'].hidden = true;
+  dom['find-count'].textContent = '';
+  dom['find-count'].classList.remove('no-matches');
+  clearFindHighlights();
+}
+
+function clearFindHighlightsForPage(p) {
+  if (!p?.textDiv) return;
+  const marks = p.textDiv.querySelectorAll('mark.find-match');
+  if (!marks.length) return;
+  for (const mark of marks) {
+    const parent = mark.parentNode;
+    if (!parent) continue;
+    parent.replaceChild(document.createTextNode(mark.textContent ?? ''), mark);
+    parent.normalize();
+  }
+}
+
+function clearFindHighlights() {
+  for (const p of view.pages) clearFindHighlightsForPage(p);
+}
+
+async function getPageSearchText(p) {
+  if (typeof p.plainText === 'string') return p.plainText;
+  p.textContent ??= await p.page.getTextContent();
+  p.plainText = p.textContent.items.map((item) => item.str || '').join('');
+  return p.plainText;
+}
+
+function applyFindHighlightsForPage(p) {
+  clearFindHighlightsForPage(p);
+  if (!p?.textDiv || !findState.query) return;
+  const pageMatches = findState.byPage.get(p.num);
+  if (!pageMatches?.length) return;
+
+  const walker = document.createTreeWalker(p.textDiv, NodeFilter.SHOW_TEXT);
+  const textNodes = [];
+  let n;
+  while ((n = walker.nextNode())) {
+    if (n.nodeValue) textNodes.push(n);
+  }
+  const needle = findState.caseSensitive ? findState.query : findState.query.toLowerCase();
+  if (!needle) return;
+
+  // Map concatenated textLayer text offsets back to individual text nodes.
+  const segments = [];
+  let cursor = 0;
+  for (const node of textNodes) {
+    const len = node.nodeValue.length;
+    segments.push({ node, start: cursor, end: cursor + len });
+    cursor += len;
+  }
+  const fullText = textNodes.map((tn) => tn.nodeValue).join('');
+  const hay = findState.caseSensitive ? fullText : fullText.toLowerCase();
+
+  const domRanges = [];
+  let pos = 0;
+  let localIdx = 0;
+  while (pos <= hay.length - needle.length) {
+    const hit = hay.indexOf(needle, pos);
+    if (hit === -1) break;
+    const globalIdx = pageMatches[localIdx]?.globalIdx ?? -1;
+    domRanges.push({ start: hit, end: hit + needle.length, globalIdx });
+    localIdx++;
+    pos = hit + Math.max(1, needle.length);
+  }
+  if (!domRanges.length) return;
+
+  // Apply highlights in reverse document order so earlier text node offsets stay valid.
+  for (let i = domRanges.length - 1; i >= 0; i--) {
+    const r = domRanges[i];
+    for (let s = segments.length - 1; s >= 0; s--) {
+      const seg = segments[s];
+      if (seg.end <= r.start || seg.start >= r.end) continue;
+      const localStart = Math.max(0, r.start - seg.start);
+      const localEnd = Math.min(seg.node.nodeValue.length, r.end - seg.start);
+      if (localStart >= localEnd) continue;
+
+      const node = seg.node;
+      const before = node.nodeValue.slice(0, localStart);
+      const matchText = node.nodeValue.slice(localStart, localEnd);
+      const after = node.nodeValue.slice(localEnd);
+      const frag = document.createDocumentFragment();
+      if (before) frag.appendChild(document.createTextNode(before));
+      const mark = document.createElement('mark');
+      mark.className = r.globalIdx === findState.activeIdx ? 'find-match active' : 'find-match';
+      mark.dataset.matchIdx = String(r.globalIdx);
+      mark.textContent = matchText;
+      frag.appendChild(mark);
+      if (after) frag.appendChild(document.createTextNode(after));
+      node.parentNode?.replaceChild(frag, node);
+    }
+  }
+}
+
+function updateFindCount() {
+  const total = findState.matches.length;
+  if (!findState.query) {
+    dom['find-count'].textContent = '';
+    dom['find-count'].classList.remove('no-matches');
+  } else if (!total) {
+    dom['find-count'].textContent = 'No matches';
+    dom['find-count'].classList.add('no-matches');
+  } else {
+    dom['find-count'].textContent = `${findState.activeIdx + 1} / ${total}`;
+    dom['find-count'].classList.remove('no-matches');
+  }
+}
+
+async function focusFindMatch(idx) {
+  const total = findState.matches.length;
+  if (!total) {
+    updateFindCount();
+    return;
+  }
+  const wrapped = ((idx % total) + total) % total;
+  findState.activeIdx = wrapped;
+  updateFindCount();
+
+  // Refresh active class on rendered marks.
+  dom.viewer.querySelectorAll('mark.find-match.active').forEach((m) => m.classList.remove('active'));
+  const target = findState.matches[wrapped];
+  const p = view.pages[target.pageNum - 1];
+  if (!p) return;
+
+  if (!p.rendered) {
+    scrollToPage(p.num);
+    await ensurePageRendered(p);
+  }
+  if (findState.activeIdx !== wrapped) return;
+
+  applyFindHighlightsForPage(p);
+  const marks = p.textDiv?.querySelectorAll(`mark.find-match[data-match-idx="${wrapped}"]`);
+  const firstMark = marks?.[0];
+  if (firstMark) {
+    firstMark.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  } else {
+    scrollToPage(p.num, null, true);
+  }
+}
+
+async function runFind(rawQuery, { preserveIndex = false } = {}) {
+  const gen = ++findState.searchGen;
+  const query = rawQuery;
+  findState.query = query;
+  findState.matches = [];
+  findState.byPage.clear();
+  clearFindHighlights();
+
+  if (!query) {
+    findState.activeIdx = -1;
+    updateFindCount();
+    return;
+  }
+
+  const needle = findState.caseSensitive ? query : query.toLowerCase();
+  const matches = [];
+  const byPage = new Map();
+
+  for (const p of view.pages) {
+    const text = await getPageSearchText(p);
+    if (gen !== findState.searchGen) return;
+    const hay = findState.caseSensitive ? text : text.toLowerCase();
+    let pos = 0;
+    const pageHits = [];
+    while (pos <= hay.length - needle.length) {
+      const hit = hay.indexOf(needle, pos);
+      if (hit === -1) break;
+      const globalIdx = matches.length;
+      matches.push({ pageNum: p.num, start: hit, length: needle.length });
+      pageHits.push({ globalIdx, start: hit, length: needle.length });
+      pos = hit + Math.max(1, needle.length);
+    }
+    if (pageHits.length) byPage.set(p.num, pageHits);
+  }
+
+  if (gen !== findState.searchGen) return;
+  findState.matches = matches;
+  findState.byPage = byPage;
+
+  if (!matches.length) {
+    findState.activeIdx = -1;
+    updateFindCount();
+    return;
+  }
+
+  // Pick first match on or after current visible page unless preserving previous index.
+  let startIdx = 0;
+  if (preserveIndex && findState.activeIdx >= 0) {
+    startIdx = Math.min(findState.activeIdx, matches.length - 1);
+  } else {
+    const nearIdx = matches.findIndex((m) => m.pageNum >= view.pageNumber);
+    startIdx = nearIdx >= 0 ? nearIdx : 0;
+  }
+  findState.activeIdx = startIdx;
+
+  for (const p of view.pages) {
+    if (p.rendered && byPage.has(p.num)) applyFindHighlightsForPage(p);
+  }
+  await focusFindMatch(startIdx);
 }
 
 // ---- SyncTeX --------------------------------------------------------------------------------
@@ -363,7 +1000,7 @@ async function reveal(request) {
   const target = p.div.offsetTop + box.y * view.scale - dom.viewer.clientHeight / 3;
   const far = Math.abs(target - dom.viewer.scrollTop) > 2 * dom.viewer.clientHeight;
   dom.viewer.scrollTo({ top: Math.max(0, target), behavior: far ? 'auto' : 'smooth' });
-  void renderPage(p);
+  void renderPage(p, true);
   vscode.postMessage({ type: 'revealed', page: box.page });
 }
 
@@ -400,28 +1037,80 @@ function rectToViewport(vp, rect) {
   return { left, top, right, bottom, width: right - left, height: bottom - top };
 }
 
-function pageCiteLinks(p) {
-  if (p.citeLinks) return Promise.resolve(p.citeLinks);
-  if (!p.citeLinksPromise) {
-    p.citeLinksPromise = p.page
+function pageAnnotations(p) {
+  if (p.pdfLinks) return Promise.resolve({ pdfLinks: p.pdfLinks, citeLinks: p.citeLinks });
+  if (!p.annotationsPromise) {
+    p.annotationsPromise = p.page
       .getAnnotations({ intent: 'display' })
       .then((annots) => {
-        p.citeLinks = annots
-          .filter((a) => a.subtype === 'Link' && typeof a.dest === 'string' && a.dest.startsWith('cite.') && Array.isArray(a.rect) && a.rect.length === 4)
-          .map((a) => ({
-            key: a.dest.slice(5),
-            rect: [
-              Math.min(a.rect[0], a.rect[2]),
-              Math.min(a.rect[1], a.rect[3]),
-              Math.max(a.rect[0], a.rect[2]),
-              Math.max(a.rect[1], a.rect[3]),
-            ],
-          }));
-        return p.citeLinks;
+        const pdfLinks = [];
+        const citeLinks = [];
+        for (const a of annots) {
+          if (a.subtype !== 'Link' || !Array.isArray(a.rect) || a.rect.length !== 4) continue;
+          const rect = [
+            Math.min(a.rect[0], a.rect[2]),
+            Math.min(a.rect[1], a.rect[3]),
+            Math.max(a.rect[0], a.rect[2]),
+            Math.max(a.rect[1], a.rect[3]),
+          ];
+          const url = typeof a.url === 'string' && a.url ? a.url : typeof a.unsafeUrl === 'string' && a.unsafeUrl ? a.unsafeUrl : null;
+          const dest = a.dest ?? null;
+          if (url || dest !== null) {
+            pdfLinks.push({ rect, url, dest });
+          }
+          if (typeof a.dest === 'string' && a.dest.startsWith('cite.')) {
+            citeLinks.push({ key: a.dest.slice(5), rect });
+          }
+        }
+        p.pdfLinks = pdfLinks;
+        p.citeLinks = citeLinks;
+        return { pdfLinks, citeLinks };
       })
-      .catch(() => (p.citeLinks = []));
+      .catch(() => {
+        p.pdfLinks = [];
+        p.citeLinks = [];
+        return { pdfLinks: [], citeLinks: [] };
+      });
   }
-  return p.citeLinksPromise;
+  return p.annotationsPromise;
+}
+
+function pageCiteLinks(p) {
+  return pageAnnotations(p).then((res) => res.citeLinks);
+}
+
+const navHistory = [];
+
+function pdfLinkAt(event) {
+  const pageDiv = event.target?.closest?.('.pdf-page');
+  if (!pageDiv) return null;
+  const p = view.pages[Number(pageDiv.dataset.page) - 1];
+  if (!p || !p.pdfLinks) {
+    if (p) void pageAnnotations(p);
+    return null;
+  }
+  const rect = pageDiv.getBoundingClientRect();
+  const vp = p.page.getViewport({ scale: view.scale });
+  const [px, py] = vp.convertToPdfPoint(event.clientX - rect.left, event.clientY - rect.top);
+  return p.pdfLinks.find((l) => px >= l.rect[0] && px <= l.rect[2] && py >= l.rect[1] && py <= l.rect[3]) ?? null;
+}
+
+async function followPdfLink(link) {
+  if (!link) return;
+  if (link.url) {
+    vscode.postMessage({ type: 'openExternal', url: link.url });
+    return;
+  }
+  if (link.dest !== null && view.document?.doc) {
+    const target = await resolveOutlineDest(view.document.doc, link.dest);
+    if (!target) return;
+    const prev = currentAnchor();
+    if (prev) {
+      navHistory.push(prev);
+      if (navHistory.length > 40) navHistory.shift();
+    }
+    scrollToPage(target.page, target.pdfY, true);
+  }
 }
 
 // Highlight boxes over citations whose paper is not in the library index.
@@ -660,6 +1349,14 @@ function setupCitationTooltips() {
 
 setupCitationTooltips();
 
+// Restore saved outline sidebar preference before first PDF loads.
+if (view.outlineOpen) {
+  dom['outline-panel'].hidden = false;
+  dom['outline-resizer'].hidden = false;
+  applyOutlineWidth(view.outlineWidth);
+  dom['toggle-outline'].setAttribute('aria-pressed', 'true');
+}
+
 // ---- Events ---------------------------------------------------------------------------------
 
 let scrollTimer;
@@ -677,16 +1374,51 @@ dom.viewer.addEventListener(
   { passive: true },
 );
 
-// Keep "fit width" when the pane is resized.
+function handleBecomeVisible() {
+  if (!view.pages.length || !isViewerVisible()) return;
+  if (view.needsLayout) {
+    const anchor = view.deferredAnchor;
+    view.needsLayout = false;
+    view.deferredAnchor = null;
+    view.generation++;
+    applyScale();
+    restoreAnchor(anchor);
+    renderVisiblePages();
+    updatePageIndicator();
+  } else {
+    renderVisiblePages();
+  }
+}
+
+// Keep "fit width" when the pane is resized, and recover cleanly when returning from a hidden tab.
 let lastWidth = 0;
 let resizeTimer;
 new ResizeObserver(() => {
   const width = dom.viewer.clientWidth;
-  if (!view.pages.length || !width || Math.abs(width - lastWidth) < 2) return;
+  const height = dom.viewer.clientHeight;
+  if (!width || !height) {
+    // Reset lastWidth while hidden so returning to the same pane width still triggers repaint.
+    lastWidth = 0;
+    return;
+  }
+  if (!view.pages.length) return;
+  if (view.needsLayout) {
+    lastWidth = width;
+    handleBecomeVisible();
+    return;
+  }
+  if (Math.abs(width - lastWidth) < 2) {
+    renderVisiblePages();
+    return;
+  }
   lastWidth = width;
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => setZoom(view.zoom), 120);
+  resizeTimer = setTimeout(() => setZoom(view.zoom), 100);
 }).observe(dom.viewer);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) handleBecomeVisible();
+});
 
 dom.viewer.addEventListener(
   'wheel',
@@ -698,7 +1430,33 @@ dom.viewer.addEventListener(
   { passive: false },
 );
 
+// Ctrl+Click (Cmd+Click on macOS) follows embedded PDF hyperlinks (URLs or internal sections/refs).
+let lastMouseEvent = null;
+function updateCtrlLinkCursor(event) {
+  const active = Boolean((event?.ctrlKey || event?.metaKey) && event && pdfLinkAt(event));
+  dom.viewer.classList.toggle('ctrl-link-hover', active);
+}
+
+dom.viewer.addEventListener('mousemove', (event) => {
+  lastMouseEvent = event;
+  updateCtrlLinkCursor(event);
+});
+dom.viewer.addEventListener('mouseleave', () => {
+  lastMouseEvent = null;
+  dom.viewer.classList.remove('ctrl-link-hover');
+});
+
+dom.viewer.addEventListener('click', (event) => {
+  if (!event.ctrlKey && !event.metaKey) return;
+  const link = pdfLinkAt(event);
+  if (!link) return;
+  event.preventDefault();
+  event.stopPropagation();
+  void followPdfLink(link);
+});
+
 dom.viewer.addEventListener('dblclick', (event) => {
+  if (event.ctrlKey || event.metaKey) return;
   const pageDiv = event.target.closest?.('.pdf-page');
   if (!pageDiv) return;
   const bounds = pageDiv.getBoundingClientRect();
@@ -712,6 +1470,74 @@ dom.viewer.addEventListener('dblclick', (event) => {
     hit?.context ?? '',
   );
 });
+
+// Keyboard shortcuts: Ctrl+F / Cmd+F for find, Escape to close find bar, Alt+Left to go back from PDF link jump.
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Control' || event.key === 'Meta') {
+    if (lastMouseEvent) updateCtrlLinkCursor({ ...lastMouseEvent, target: lastMouseEvent.target, clientX: lastMouseEvent.clientX, clientY: lastMouseEvent.clientY, ctrlKey: true, metaKey: true });
+  } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+    event.preventDefault();
+    openFindBar();
+  } else if (event.key === 'Escape' && findState.open) {
+    event.preventDefault();
+    closeFindBar();
+  } else if (event.altKey && event.key === 'ArrowLeft' && navHistory.length) {
+    event.preventDefault();
+    restoreAnchor(navHistory.pop());
+    renderVisiblePages();
+    updatePageIndicator();
+  }
+});
+
+window.addEventListener('keyup', (event) => {
+  if (event.key === 'Control' || event.key === 'Meta') {
+    dom.viewer.classList.remove('ctrl-link-hover');
+  }
+});
+window.addEventListener('blur', () => {
+  dom.viewer.classList.remove('ctrl-link-hover');
+});
+
+let findTimer;
+dom['find-input'].addEventListener('input', () => {
+  clearTimeout(findTimer);
+  findTimer = setTimeout(() => void runFind(dom['find-input'].value), 120);
+});
+dom['find-input'].addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    if (!findState.matches.length && dom['find-input'].value) {
+      void runFind(dom['find-input'].value);
+    } else {
+      void focusFindMatch(findState.activeIdx + (event.shiftKey ? -1 : 1));
+    }
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    closeFindBar();
+  }
+});
+dom['find-prev'].addEventListener('click', () => void focusFindMatch(findState.activeIdx - 1));
+dom['find-next'].addEventListener('click', () => void focusFindMatch(findState.activeIdx + 1));
+dom['find-case'].addEventListener('click', () => {
+  findState.caseSensitive = !findState.caseSensitive;
+  dom['find-case'].setAttribute('aria-pressed', findState.caseSensitive ? 'true' : 'false');
+  if (dom['find-input'].value) void runFind(dom['find-input'].value);
+});
+dom['find-close'].addEventListener('click', closeFindBar);
+dom['toggle-find'].addEventListener('click', () => {
+  if (findState.open) closeFindBar();
+  else openFindBar();
+});
+
+dom['toggle-outline'].addEventListener('click', () => setOutlineOpen(!view.outlineOpen));
+dom['outline-close'].addEventListener('click', () => setOutlineOpen(false));
+
+dom['compile-status'].addEventListener('click', () => {
+  if (dom['compile-status'].classList.contains('error') || dom['compile-status'].classList.contains('warn')) {
+    vscode.postMessage({ type: 'showLog' });
+  }
+});
+dom['auto-compile'].addEventListener('click', () => vscode.postMessage({ type: 'toggleAutoCompile' }));
 
 dom.prev.addEventListener('click', () => scrollToPage(view.pageNumber - 1));
 dom.next.addEventListener('click', () => scrollToPage(view.pageNumber + 1));
@@ -741,7 +1567,14 @@ window.addEventListener('message', (event) => {
       syncViewToCode();
       break;
     case 'busy':
-      setMessage(message.busy ? 'Compiling…' : '');
+      if (message.busy) applyCompileStatus({ state: 'compiling' });
+      else dom['compile-bar'].hidden = true;
+      break;
+    case 'compileStatus':
+      applyCompileStatus(message.status);
+      break;
+    case 'autoCompile':
+      applyAutoCompileMode(message.mode);
       break;
     case 'citations':
       cites.data = message.data || {};

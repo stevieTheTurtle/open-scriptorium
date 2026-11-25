@@ -12,6 +12,14 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+# Ensure UTF-8 stdout/stderr on Windows piped subprocesses so Unicode never crashes startup.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import aiofiles
@@ -22,7 +30,7 @@ from pydantic import BaseModel
 
 from core.database import get_paper, init_db, list_papers
 from core.ingest import ingest_pdf, remove_paper as _remove_paper
-from core.retrieval import search
+from core.retrieval import get_context_for_query, search
 
 init_db()
 
@@ -35,6 +43,17 @@ app.add_middleware(
 )
 
 _UI_DIR = Path(__file__).parent.parent / "ui"
+
+# ─── Background embedding pre-warm ───────────────────────────────────────────
+
+def _prewarm_embeddings() -> None:
+    """Warm up the embedding provider in the background so the first CLI/UI search is fast."""
+    try:
+        from core.embeddings import get_provider
+        get_provider()
+    except Exception:
+        pass
+
 
 # ─── Heartbeat / auto-shutdown ────────────────────────────────────────────────
 
@@ -56,6 +75,12 @@ def _heartbeat_monitor() -> None:
 threading.Thread(target=_heartbeat_monitor, daemon=True).start()
 
 
+@app.get("/api/health")
+def api_health():
+    from core.collections import get_active_name
+    return {"ok": True, "collection": get_active_name()}
+
+
 @app.get("/api/heartbeat")
 def api_heartbeat():
     global _last_heartbeat
@@ -72,6 +97,24 @@ class SearchRequest(BaseModel):
 
 class TagUpdateRequest(BaseModel):
     tags: list[str]
+
+
+class IngestPathRequest(BaseModel):
+    pdf_path: str
+    tags: list[str] = []
+    force: bool = False
+
+
+class ArxivSearchRequest(BaseModel):
+    query: str
+    max_results: int = 10
+
+
+class ArxivFetchRequest(BaseModel):
+    arxiv_id: str
+    add_to_kb: bool = False
+    extra_tags: list[str] = []
+    download_dir: Optional[str] = None
 
 
 # ─── Papers ──────────────────────────────────────────────────────────────────
@@ -135,6 +178,14 @@ async def api_upload_paper(
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
     result = ingest_pdf(tmp_path, tags=tag_list)
     return result
+
+
+@app.post("/api/papers/ingest-path")
+def api_ingest_path(body: IngestPathRequest):
+    path = Path(body.pdf_path)
+    if not path.exists():
+        raise HTTPException(404, f"File not found: {path}")
+    return ingest_pdf(path, tags=body.tags, force=body.force)
 
 
 @app.get("/api/papers/{paper_id}/open")
@@ -264,6 +315,76 @@ def api_search(req: SearchRequest):
     return results
 
 
+@app.post("/api/search/context")
+def api_search_context(req: SearchRequest):
+    return {"context": get_context_for_query(req.query, top_k=req.top_k)}
+
+
+# ─── arXiv ───────────────────────────────────────────────────────────────────
+
+@app.post("/api/arxiv/search")
+def api_arxiv_search(req: ArxivSearchRequest):
+    import dataclasses
+    from core.arxiv import search_arxiv
+    from core.settings import get_arxiv_enabled
+
+    if not get_arxiv_enabled():
+        raise HTTPException(
+            403,
+            "arXiv online search is currently DISABLED. Enable it in the Research Assistant Web UI settings.",
+        )
+    try:
+        results = search_arxiv(req.query, max_results=req.max_results)
+    except Exception as exc:
+        raise HTTPException(502, f"arXiv API error: {exc}")
+    return [dataclasses.asdict(r) for r in results]
+
+
+@app.post("/api/arxiv/fetch")
+def api_arxiv_fetch(req: ArxivFetchRequest):
+    import dataclasses
+    from core.arxiv import download_pdf, fetch_arxiv
+    from core.collections import create_collection, get_active_name, set_active_collection
+    from core.config import get_config
+    from core.settings import get_arxiv_enabled
+
+    if not get_arxiv_enabled():
+        raise HTTPException(
+            403,
+            "arXiv online search is currently DISABLED. Enable it in the Research Assistant Web UI settings.",
+        )
+    try:
+        result = fetch_arxiv(req.arxiv_id)
+    except Exception as exc:
+        raise HTTPException(502, f"arXiv API error: {exc}")
+    if result is None:
+        raise HTTPException(404, f"arXiv paper not found: {req.arxiv_id}")
+
+    payload = dataclasses.asdict(result)
+    if req.download_dir or req.add_to_kb:
+        dl_dir = Path(req.download_dir) if req.download_dir else get_config().get_data_dir() / "arxiv_downloads"
+        pdf_path = download_pdf(result, dl_dir)
+        payload["downloaded_path"] = str(pdf_path)
+
+        if req.add_to_kb:
+            arxiv_col = "arXiv Downloads"
+            prev = get_active_name()
+            try:
+                create_collection(arxiv_col, "Papers fetched from arXiv search")
+            except ValueError:
+                pass
+            try:
+                set_active_collection(arxiv_col)
+                init_db()
+                tags = list({"arxiv", *req.extra_tags})
+                ingest_res = ingest_pdf(pdf_path, tags=tags)
+                payload["ingest"] = ingest_res.model_dump(mode="json")
+            finally:
+                set_active_collection(prev)
+                init_db()
+    return payload
+
+
 # ─── Status ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/status")
@@ -286,13 +407,20 @@ def serve_ui():
     return "<h1>UI not found</h1>"
 
 
-def run(auto_shutdown: bool = False) -> None:
+def run(
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+    auto_shutdown: bool = False,
+) -> None:
     import uvicorn
     from core.config import get_config
     global _auto_shutdown
     _auto_shutdown = auto_shutdown
     cfg = get_config().api
-    uvicorn.run("api.app:app", host=cfg.host, port=cfg.port, reload=False)
+    bind_host = host or cfg.host
+    bind_port = port or cfg.port
+    threading.Thread(target=_prewarm_embeddings, daemon=True).start()
+    uvicorn.run(app, host=bind_host, port=bind_port, reload=False, log_level="warning")
 
 
 if __name__ == "__main__":

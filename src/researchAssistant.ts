@@ -1,6 +1,6 @@
-// Bundled Research Assistant manager: 1-click setup wizard, MCP registration
-// (Antigravity plugin, Claude Code CLI, VS Code), Zotero sync, Web UI launcher,
-// and built-in citation status script runner.
+// Bundled Research Assistant manager: 1-click setup wizard, CLI-first + opt-in MCP fallback
+// registration (Antigravity plugin, Claude Code CLI, VS Code), warm local daemon / Web UI launcher,
+// Zotero sync, and built-in citation status script runner.
 
 import * as vscode from 'vscode';
 import { spawn, type ChildProcess } from 'node:child_process';
@@ -14,6 +14,7 @@ import {
   antigravityPluginDir,
   buildMcpLaunchSpec,
   claudeConfigPaths,
+  cliLauncherPath,
   defaultInstallDir,
   detectExistingDataDir,
   detectZoteroDir,
@@ -24,6 +25,7 @@ import {
   registerClaudeCode,
   registerVsCodeUserMcp,
   renderConfigYaml,
+  renderSkillTemplate,
   resolveResearchAssistantPaths,
   syncBundledSource,
   vsCodeUserMcpPath,
@@ -88,11 +90,16 @@ function httpOk(url: string, timeoutMs = 1500): Promise<boolean> {
   });
 }
 
-async function waitForUrl(url: string, maxMs = 20000): Promise<boolean> {
+async function waitForUrl(
+  url: string,
+  maxMs = 30000,
+  shouldAbort?: () => boolean,
+): Promise<boolean> {
   const deadline = Date.now() + maxMs;
   while (Date.now() < deadline) {
+    if (shouldAbort?.()) return false;
     if (await httpOk(url, 1000)) return true;
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 350));
   }
   return false;
 }
@@ -126,6 +133,7 @@ export class ResearchAssistantService implements vscode.Disposable {
   private readonly syncedEmitter = new vscode.EventEmitter<void>();
   private readonly mcpChangedEmitter = new vscode.EventEmitter<void>();
   private webUiProcess: ChildProcess | null = null;
+  private daemonStarting: Promise<{ ok: boolean; error?: string }> | null = null;
   private syncRunning: Promise<boolean> | undefined;
   private syncTimer: NodeJS.Timeout | undefined;
   private readonly disposables: vscode.Disposable[] = [];
@@ -143,13 +151,24 @@ export class ResearchAssistantService implements vscode.Disposable {
         if (e.affectsConfiguration(`${CONFIG_SECTION}.researchAssistant`)) {
           this.mcpChangedEmitter.fire();
           this.restartPeriodicSync();
+          this.refreshLaunchersIfInstalled();
+          const settings = this.getSettings();
+          if (settings.enabled && settings.autoStartDaemon) {
+            void this.ensureDaemonRunning({ silent: true });
+          }
         }
       }),
     );
 
     this.syncBundledIfInstalled();
+    this.refreshLaunchersIfInstalled();
     this.registerBuiltInVsCodeMcpProvider();
     this.restartPeriodicSync();
+
+    const settings = this.getSettings();
+    if (settings.enabled && settings.autoStartDaemon && vscode.workspace.isTrusted) {
+      void this.ensureDaemonRunning({ silent: true });
+    }
   }
 
   dispose(): void {
@@ -162,7 +181,7 @@ export class ResearchAssistantService implements vscode.Disposable {
   }
 
   get extensionVersion(): string {
-    return String(this.context.extension.packageJSON?.version ?? '0.1.0');
+    return String(this.context.extension.packageJSON?.version ?? '0.2.0');
   }
 
   get bundledSourceDir(): string {
@@ -184,6 +203,8 @@ export class ResearchAssistantService implements vscode.Disposable {
       zoteroDir: cfg.get<string>('researchAssistant.zoteroDir', ''),
       zoteroSyncIntervalMinutes: cfg.get<number>('researchAssistant.zoteroSyncIntervalMinutes', 0),
       webUiPort: cfg.get<number>('researchAssistant.webUiPort', 8000),
+      mcpFallback: cfg.get<boolean>('researchAssistant.mcpFallback', false),
+      autoStartDaemon: cfg.get<boolean>('researchAssistant.autoStartDaemon', true),
     };
   }
 
@@ -217,9 +238,10 @@ export class ResearchAssistantService implements vscode.Disposable {
     return { python, script, dbPath: paths.metadataDbPath };
   }
 
-  private readAgentTemplates(): { skillMd: string; agentsMd: string; logoSvg?: string } {
+  private readAgentTemplates(paths: ResearchAssistantPaths): { skillMd: string; agentsMd: string; logoSvg?: string } {
     const base = path.join(this.context.extensionPath, 'agent-plugin');
-    const skillMd = fs.readFileSync(path.join(base, 'skills', 'citation-evidence', 'SKILL.md'), 'utf8');
+    const rawSkillMd = fs.readFileSync(path.join(base, 'skills', 'citation-evidence', 'SKILL.md'), 'utf8');
+    const skillMd = renderSkillTemplate(rawSkillMd, paths);
     const agentsMd = fs.readFileSync(path.join(base, 'rules', 'AGENTS.md'), 'utf8');
     const logoPath = path.join(base, 'assets', 'logo.svg');
     const logoSvg = fs.existsSync(logoPath) ? fs.readFileSync(logoPath, 'utf8') : undefined;
@@ -240,7 +262,17 @@ export class ResearchAssistantService implements vscode.Disposable {
     }
   }
 
-  /** Registers the VS Code 1.101+ built-in MCP Server Definition Provider when supported by the host editor. */
+  private refreshLaunchersIfInstalled(): void {
+    const paths = this.getPaths();
+    if (!fs.existsSync(paths.venvPython)) return;
+    try {
+      writeLauncherScripts(paths, process.platform, this.getSettings().webUiPort || 8000);
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  /** Registers the VS Code 1.101+ built-in MCP Server Definition Provider (only active when mcpFallback is enabled). */
   private registerBuiltInVsCodeMcpProvider(): void {
     const api = vscode as unknown as {
       lm?: {
@@ -267,10 +299,10 @@ export class ResearchAssistantService implements vscode.Disposable {
         onDidChangeMcpServerDefinitions: this.mcpChangedEmitter.event,
         provideMcpServerDefinitions: () => {
           const settings = this.getSettings();
-          if (!settings.enabled) return [];
+          if (!settings.enabled || !settings.mcpFallback) return [];
           const paths = this.getPaths();
           if (!fs.existsSync(paths.venvPython)) return [];
-          const spec = buildMcpLaunchSpec(paths);
+          const spec = buildMcpLaunchSpec(paths, undefined, settings.webUiPort);
           return [new StdioDef('Research Assistant', spec.command, spec.args, spec.env, this.extensionVersion)];
         },
       });
@@ -439,29 +471,54 @@ export class ResearchAssistantService implements vscode.Disposable {
       chosenOllamaUrl = url.trim();
     }
 
-    // 5. Select AI clients to register MCP + Skills/Rules
+    // 5. Select AI clients & CLI vs MCP fallback mode
+    const modePick = await vscode.window.showQuickPick<vscode.QuickPickItem & { includeMcp: boolean }>(
+      [
+        {
+          label: '$(terminal) CLI-first only (Recommended — lowest token usage)',
+          description: 'Installs skills/rules using the fast `ra` CLI without attaching an MCP server',
+          includeMcp: false,
+        },
+        {
+          label: '$(plug) CLI + MCP fallback',
+          description: 'Also registers the stdio MCP server for clients without shell access',
+          includeMcp: true,
+        },
+      ],
+      {
+        title: 'Research Assistant Setup (5/5): Agent Integration Mode',
+        placeHolder: 'How should AI assistants connect to Research Assistant?',
+      },
+    );
+    if (!modePick) return;
+    const includeMcp = modePick.includeMcp;
+
     const clientItems: Array<vscode.QuickPickItem & { id: 'antigravity' | 'claude' | 'vscode' }> = [
       {
-        label: 'Antigravity IDE (Plugin: MCP + Citation Evidence Skill + Rules)',
+        label: includeMcp
+          ? 'Antigravity IDE (Plugin: CLI Skill + Rules + MCP fallback)'
+          : 'Antigravity IDE (Plugin: CLI Skill + Rules)',
         description: antigravityPluginDir(home),
         picked: true,
         id: 'antigravity',
       },
       {
-        label: 'Claude Code CLI (User MCP + Citation Evidence Skill)',
-        description: claudeConfigPaths(home).claudeJsonPath,
+        label: includeMcp
+          ? 'Claude Code CLI (CLI Skill + MCP fallback)'
+          : 'Claude Code CLI (CLI Skill)',
+        description: claudeConfigPaths(home).skillPath,
         picked: true,
         id: 'claude',
       },
       {
-        label: 'VS Code (User mcp.json + Built-in MCP Provider)',
+        label: 'VS Code (User mcp.json — only used when MCP fallback is enabled)',
         description: vsCodeUserMcpPath(home),
-        picked: true,
+        picked: includeMcp,
         id: 'vscode',
       },
     ];
     const selectedClients = await vscode.window.showQuickPick(clientItems, {
-      title: 'Research Assistant Setup (5/5): Register MCP & Citation Rules',
+      title: 'Research Assistant Setup (5/5): Register AI Clients',
       placeHolder: 'Choose which AI clients to configure automatically',
       canPickMany: true,
     });
@@ -482,6 +539,7 @@ export class ResearchAssistantService implements vscode.Disposable {
     this.output.appendLine(`Data dir    : ${finalPaths.dataDir}`);
     this.output.appendLine(`Zotero dir  : ${finalPaths.zoteroDir ?? '(none)'}`);
     this.output.appendLine(`Embeddings  : ${chosenProvider}${chosenProvider === 'ollama' ? ` (${chosenOllamaUrl})` : ''}`);
+    this.output.appendLine(`Agent mode  : ${includeMcp ? 'CLI + MCP fallback' : 'CLI-first (no MCP)'}`);
 
     const ok = await vscode.window.withProgress(
       {
@@ -512,20 +570,20 @@ export class ResearchAssistantService implements vscode.Disposable {
         const uvBin = findOnPath('uv');
         if (!fs.existsSync(finalPaths.venvPython)) {
           progress.report({ message: 'Creating Python virtual environment…' });
-          this.output.appendLine(`\n▶ Creating .venv in ${finalPaths.venvDir}`);
+          this.output.appendLine(`\n> Creating .venv in ${finalPaths.venvDir}`);
           const venvRes = uvBin
             ? await runProcess(uvBin, ['venv', finalPaths.venvDir, '--python', pythonCmd], { onOutput: log })
             : await runProcess(pythonCmd, [...pythonArgsPrefix, '-m', 'venv', finalPaths.venvDir], { onOutput: log });
           if (venvRes.code !== 0 || !fs.existsSync(finalPaths.venvPython)) {
-            this.output.appendLine('\n✗ Failed to create virtual environment.');
+            this.output.appendLine('\n[error] Failed to create virtual environment.');
             return false;
           }
         } else {
-          this.output.appendLine(`\n✓ Reusing existing virtual environment at ${finalPaths.venvDir}`);
+          this.output.appendLine(`\n[ok] Reusing existing virtual environment at ${finalPaths.venvDir}`);
         }
 
         progress.report({ message: 'Installing Python dependencies (first run may take 2–4 min)…' });
-        this.output.appendLine('\n▶ Installing Research Assistant dependencies…');
+        this.output.appendLine('\n> Installing Research Assistant dependencies…');
         const installRes = uvBin
           ? await runProcess(uvBin, ['pip', 'install', '--python', finalPaths.venvPython, '-e', finalPaths.installDir], {
               cwd: finalPaths.installDir,
@@ -536,33 +594,34 @@ export class ResearchAssistantService implements vscode.Disposable {
               onOutput: log,
             });
         if (installRes.code !== 0) {
-          this.output.appendLine('\n✗ Dependency installation failed. See output above.');
+          this.output.appendLine('\n[error] Dependency installation failed. See output above.');
           return false;
         }
 
         progress.report({ message: 'Initializing database…' });
-        const env = { ...process.env, ...buildMcpLaunchSpec(finalPaths).env };
+        const env = { ...process.env, ...buildMcpLaunchSpec(finalPaths, undefined, currentSettings.webUiPort).env };
         const dbRes = await runProcess(
           finalPaths.venvPython,
           ['-c', 'from core.database import init_db; init_db(); print("DB_OK")'],
           { cwd: finalPaths.installDir, env, onOutput: log },
         );
         if (dbRes.code !== 0) {
-          this.output.appendLine('\n! Database initialization returned non-zero status (continuing).');
+          this.output.appendLine('\n[warn] Database initialization returned non-zero status (continuing).');
         }
 
-        progress.report({ message: 'Creating launcher scripts & saving settings…' });
-        writeLauncherScripts(finalPaths);
+        progress.report({ message: 'Creating CLI launchers & saving settings…' });
+        writeLauncherScripts(finalPaths, process.platform, currentSettings.webUiPort || 8000);
 
         const cfg = vscode.workspace.getConfiguration(CONFIG_SECTION);
         await cfg.update('researchAssistant.dataDir', finalPaths.dataDir, vscode.ConfigurationTarget.Global);
         await cfg.update('researchAssistant.zoteroDir', finalPaths.zoteroDir ?? '', vscode.ConfigurationTarget.Global);
+        await cfg.update('researchAssistant.mcpFallback', includeMcp, vscode.ConfigurationTarget.Global);
 
-        progress.report({ message: 'Registering MCP server & citation-evidence skills…' });
+        progress.report({ message: 'Registering citation-evidence skills…' });
         const clientIds = new Set(selectedClients.map((c) => c.id));
-        this.applyClientRegistrations(finalPaths, clientIds);
+        this.applyClientRegistrations(finalPaths, clientIds, includeMcp);
         this.mcpChangedEmitter.fire();
-        this.output.appendLine('\n✓ Research Assistant setup complete!');
+        this.output.appendLine(`\n[ok] Research Assistant setup complete! CLI: ${cliLauncherPath(finalPaths)}`);
         return true;
       },
     );
@@ -575,11 +634,16 @@ export class ResearchAssistantService implements vscode.Disposable {
     }
 
     this.restartPeriodicSync();
+    if (this.getSettings().autoStartDaemon) {
+      void this.ensureDaemonRunning({ silent: true });
+    }
     const actions: string[] = [];
     if (finalPaths.zoteroDir) actions.push('Sync Zotero Now');
     actions.push('Open Web UI', 'Show Log');
     const chosen = await vscode.window.showInformationMessage(
-      'Research Assistant is ready! Restart Antigravity / Claude Code / VS Code if needed to pick up the new MCP server.',
+      includeMcp
+        ? 'Research Assistant is ready (CLI + MCP fallback). Restart AI clients if needed to reload plugins/MCP.'
+        : 'Research Assistant is ready in CLI-first mode! Restart AI clients if needed to pick up the updated skill.',
       ...actions,
     );
     if (chosen === 'Sync Zotero Now') {
@@ -594,25 +658,28 @@ export class ResearchAssistantService implements vscode.Disposable {
   private applyClientRegistrations(
     paths: ResearchAssistantPaths,
     clients: Set<'antigravity' | 'claude' | 'vscode'>,
+    includeMcp: boolean,
   ): void {
-    const spec = buildMcpLaunchSpec(paths);
-    const templates = this.readAgentTemplates();
+    const port = this.getSettings().webUiPort || 8000;
+    writeLauncherScripts(paths, process.platform, port);
+    const spec = buildMcpLaunchSpec(paths, undefined, port);
+    const templates = this.readAgentTemplates(paths);
     if (clients.has('antigravity')) {
-      const dir = registerAntigravityPlugin(spec, { ...templates, version: this.extensionVersion });
-      this.output.appendLine(`✓ Antigravity plugin registered → ${dir}`);
+      const dir = registerAntigravityPlugin(spec, { ...templates, version: this.extensionVersion }, os.homedir(), { includeMcp });
+      this.output.appendLine(`[ok] Antigravity plugin updated (${includeMcp ? 'CLI + MCP' : 'CLI-only'}) -> ${dir}`);
     }
     if (clients.has('claude')) {
-      const res = registerClaudeCode(spec, templates.skillMd);
-      this.output.appendLine(`✓ Claude Code MCP registered → ${res.claudeJsonPath}`);
-      this.output.appendLine(`✓ Claude Code skill installed → ${res.skillPath}`);
+      const res = registerClaudeCode(spec, templates.skillMd, os.homedir(), { includeMcp });
+      this.output.appendLine(`[ok] Claude Code skill updated -> ${res.skillPath}`);
+      if (includeMcp) this.output.appendLine(`[ok] Claude Code MCP registered -> ${res.claudeJsonPath}`);
     }
     if (clients.has('vscode')) {
-      const mcpPath = registerVsCodeUserMcp(spec);
-      this.output.appendLine(`✓ VS Code user MCP registered → ${mcpPath}`);
+      const mcpPath = registerVsCodeUserMcp(spec, os.homedir(), process.platform, process.env, { includeMcp });
+      this.output.appendLine(`[ok] VS Code user mcp.json ${includeMcp ? 'registered' : 'cleaned'} -> ${mcpPath}`);
     }
   }
 
-  /** Re-registers MCP + skills without recreating .venv. */
+  /** Re-registers CLI skills (and optional MCP fallback) without recreating .venv. */
   async registerClientsInteractive(): Promise<void> {
     const paths = this.getPaths();
     if (!fs.existsSync(paths.venvPython)) {
@@ -623,36 +690,62 @@ export class ResearchAssistantService implements vscode.Disposable {
       if (run === 'Run Setup') await this.setupWizard();
       return;
     }
+
+    const currentMcp = this.getSettings().mcpFallback;
+    const modePick = await vscode.window.showQuickPick<vscode.QuickPickItem & { includeMcp: boolean }>(
+      [
+        {
+          label: '$(terminal) CLI-first only (Recommended — lowest tokens)',
+          description: currentMcp ? 'Switch off MCP' : 'Current',
+          detail: 'Uses the fast `ra` CLI in skills; removes unused MCP server configs',
+          includeMcp: false,
+        },
+        {
+          label: '$(plug) CLI + MCP fallback',
+          description: currentMcp ? 'Current' : 'Enable MCP fallback',
+          detail: 'Installs CLI skills AND registers stdio MCP server for clients without shell access',
+          includeMcp: true,
+        },
+      ],
+      { title: 'Research Assistant: Choose Agent Integration Mode' },
+    );
+    if (!modePick) return;
+    const includeMcp = modePick.includeMcp;
+
     const status = inspectClientRegistrations();
     const items: Array<vscode.QuickPickItem & { id: 'antigravity' | 'claude' | 'vscode' }> = [
       {
-        label: 'Antigravity IDE (Plugin: MCP + Skill + Rules)',
-        description: status.antigravity ? 'Already registered (will update)' : 'Not registered',
+        label: 'Antigravity IDE (Plugin: Skill + Rules' + (includeMcp ? ' + MCP' : '') + ')',
+        description: status.antigravity ? (status.antigravityMcp ? 'Registered (with MCP)' : 'Registered (CLI)') : 'Not registered',
         picked: true,
         id: 'antigravity',
       },
       {
-        label: 'Claude Code CLI (MCP + Skill)',
-        description: status.claudeCode ? 'Already registered (will update)' : 'Not registered',
+        label: 'Claude Code CLI (Skill' + (includeMcp ? ' + MCP' : '') + ')',
+        description: status.claudeCode ? (status.claudeCodeMcp ? 'Registered (with MCP)' : 'Registered (CLI)') : 'Not registered',
         picked: true,
         id: 'claude',
       },
       {
         label: 'VS Code (User mcp.json)',
-        description: status.vsCodeUser ? 'Already registered (will update)' : 'Not registered',
-        picked: true,
+        description: status.vsCodeUser ? 'MCP registered' : 'Not registered',
+        picked: includeMcp || status.vsCodeUser,
         id: 'vscode',
       },
     ];
     const picked = await vscode.window.showQuickPick(items, {
-      title: 'Research Assistant: Register MCP Server & Citation Evidence Skills',
+      title: 'Research Assistant: Update AI Client Registrations',
       canPickMany: true,
     });
     if (!picked?.length) return;
-    this.applyClientRegistrations(paths, new Set(picked.map((p) => p.id)));
+
+    await vscode.workspace
+      .getConfiguration(CONFIG_SECTION)
+      .update('researchAssistant.mcpFallback', includeMcp, vscode.ConfigurationTarget.Global);
+    this.applyClientRegistrations(paths, new Set(picked.map((p) => p.id)), includeMcp);
     this.mcpChangedEmitter.fire();
     void vscode.window.showInformationMessage(
-      `Research Assistant registered for ${picked.map((p) => p.id).join(', ')}. Restart those clients if already running.`,
+      `Research Assistant updated (${includeMcp ? 'CLI + MCP fallback' : 'CLI-only'}) for ${picked.map((p) => p.id).join(', ')}. Restart those clients if already running.`,
     );
   }
 
@@ -683,23 +776,23 @@ export class ResearchAssistantService implements vscode.Disposable {
     }
 
     const script = path.join(paths.installDir, 'scripts', 'zotero_sync.py');
-    const spec = buildMcpLaunchSpec(paths);
+    const spec = buildMcpLaunchSpec(paths, undefined, this.getSettings().webUiPort);
     const args = [script, '--zotero-dir', paths.zoteroDir, '--collection', paths.collection];
     if (silent) args.push('--no-notify');
 
     const run = async (): Promise<boolean> => {
-      this.output.appendLine(`\n▶ Syncing Zotero library from ${paths.zoteroDir}…`);
+      this.output.appendLine(`\n> Syncing Zotero library from ${paths.zoteroDir}…`);
       const res = await runProcess(paths.venvPython, args, {
         cwd: paths.installDir,
         env: { ...process.env, ...spec.env },
         onOutput: (chunk) => this.output.append(chunk),
       });
       if (res.code === 0) {
-        this.output.appendLine('✓ Zotero sync complete.');
+        this.output.appendLine('[ok] Zotero sync complete.');
         this.syncedEmitter.fire();
         return true;
       }
-      this.output.appendLine(`✗ Zotero sync exited with code ${res.code}.`);
+      this.output.appendLine(`[error] Zotero sync exited with code ${res.code}.`);
       return false;
     };
 
@@ -734,19 +827,101 @@ export class ResearchAssistantService implements vscode.Disposable {
     return ok;
   }
 
-  /** Launches (if needed) and opens the Research Assistant Web UI in the default browser. */
-  async openWebUi(): Promise<void> {
+  /** Ensures the local Research Assistant HTTP daemon (backing both fast `ra` CLI and Web UI) is running. */
+  async ensureDaemonRunning(options: { silent?: boolean } = {}): Promise<{ ok: boolean; url: string; error?: string }> {
     const settings = this.getSettings();
     const paths = this.getPaths();
     const port = settings.webUiPort || 8000;
     const baseUrl = `http://127.0.0.1:${port}`;
-    const healthUrl = `${baseUrl}/api/papers`;
+    const healthUrl = `${baseUrl}/api/health`;
 
     if (await httpOk(healthUrl)) {
-      await vscode.env.openExternal(vscode.Uri.parse(baseUrl));
-      return;
+      return { ok: true, url: baseUrl };
+    }
+    if (!fs.existsSync(paths.venvPython)) {
+      return { ok: false, url: baseUrl, error: 'Research Assistant virtual environment is not installed.' };
     }
 
+    if (this.daemonStarting) {
+      const res = await this.daemonStarting;
+      return { ...res, url: baseUrl };
+    }
+
+    const start = async (): Promise<{ ok: boolean; error?: string }> => {
+      const spec = buildMcpLaunchSpec(paths, undefined, port);
+      this.output.appendLine(`\n> Starting Research Assistant server on ${baseUrl}…`);
+      const child = spawn(
+        paths.venvPython,
+        ['-m', 'cli', 'serve', '--no-browser', '--host', '127.0.0.1', '--port', String(port)],
+        {
+          cwd: paths.installDir,
+          env: { ...process.env, ...spec.env },
+          windowsHide: true,
+        },
+      );
+      this.webUiProcess = child;
+
+      let exited = false;
+      let exitCode: number | null = null;
+      let stderrTail = '';
+
+      child.stdout?.on('data', (d: Buffer) => this.output.append(d.toString('utf8')));
+      child.stderr?.on('data', (d: Buffer) => {
+        const text = d.toString('utf8');
+        this.output.append(text);
+        stderrTail = (stderrTail + text).slice(-1200);
+      });
+      child.on('error', (err) => {
+        exited = true;
+        stderrTail = err.message;
+        this.output.appendLine(`[error] Failed to spawn server: ${err.message}`);
+      });
+      child.on('exit', (code) => {
+        exited = true;
+        exitCode = code;
+        if (this.webUiProcess === child) this.webUiProcess = null;
+        if (code !== 0 && code !== null) {
+          this.output.appendLine(`[error] Research Assistant server exited with code ${code}.`);
+        }
+      });
+
+      const wait = () => waitForUrl(healthUrl, 30000, () => exited);
+      const ready = options.silent
+        ? await wait()
+        : await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: `Starting Research Assistant on port ${port}…`,
+            },
+            wait,
+          );
+
+      if (ready) {
+        this.output.appendLine(`[ok] Research Assistant server ready at ${baseUrl}`);
+        return { ok: true };
+      }
+      const lastLine = stderrTail
+        .trim()
+        .split(/\r?\n/)
+        .filter(Boolean)
+        .slice(-2)
+        .join(' | ');
+      const error = exited
+        ? `Server exited early (code ${exitCode ?? '?'}): ${lastLine || 'see output log'}`
+        : `Server did not respond on ${baseUrl} in time.`;
+      return { ok: false, error };
+    };
+
+    this.daemonStarting = start().finally(() => {
+      this.daemonStarting = null;
+    });
+    const result = await this.daemonStarting;
+    return { ...result, url: baseUrl };
+  }
+
+  /** Launches (if needed) and opens the Research Assistant Web UI in the default browser. */
+  async openWebUi(): Promise<void> {
+    const paths = this.getPaths();
     if (!fs.existsSync(paths.venvPython)) {
       const go = await vscode.window.showWarningMessage(
         'Research Assistant is not set up yet. Run Setup first to launch the Web UI.',
@@ -756,33 +931,12 @@ export class ResearchAssistantService implements vscode.Disposable {
       return;
     }
 
-    const spec = buildMcpLaunchSpec(paths);
-    this.output.appendLine(`\n▶ Starting Research Assistant Web UI on ${baseUrl}…`);
-    const child = spawn(paths.venvPython, ['-m', 'cli', 'serve', '--no-browser', '--port', String(port)], {
-      cwd: paths.installDir,
-      env: { ...process.env, ...spec.env },
-      windowsHide: true,
-    });
-    this.webUiProcess = child;
-    child.stdout?.on('data', (d: Buffer) => this.output.append(d.toString('utf8')));
-    child.stderr?.on('data', (d: Buffer) => this.output.append(d.toString('utf8')));
-    child.on('exit', () => {
-      if (this.webUiProcess === child) this.webUiProcess = null;
-    });
-
-    const ready = await vscode.window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: `Starting Research Assistant Web UI on port ${port}…`,
-      },
-      () => waitForUrl(healthUrl, 25000),
-    );
-
-    if (ready) {
-      await vscode.env.openExternal(vscode.Uri.parse(baseUrl));
+    const res = await this.ensureDaemonRunning({ silent: false });
+    if (res.ok) {
+      await vscode.env.openExternal(vscode.Uri.parse(res.url));
     } else {
       const openLog = await vscode.window.showErrorMessage(
-        'Research Assistant Web UI did not respond in time.',
+        `Research Assistant Web UI failed to start: ${res.error ?? 'unknown error'}`,
         'Show Log',
       );
       if (openLog === 'Show Log') this.output.show(true);
@@ -796,7 +950,7 @@ export class ResearchAssistantService implements vscode.Disposable {
       void vscode.window.showWarningMessage('Open a workspace folder first to install workspace citation rules.');
       return;
     }
-    const templates = this.readAgentTemplates();
+    const templates = this.readAgentTemplates(this.getPaths());
     const res = installWorkspaceAgentFiles(folder.uri.fsPath, templates);
     void vscode.window.showInformationMessage(
       `Installed citation-evidence skill and rules in ${path.relative(folder.uri.fsPath, path.dirname(path.dirname(res.skillPath)))}`,
@@ -805,21 +959,24 @@ export class ResearchAssistantService implements vscode.Disposable {
 
   /** Shows an interactive status & actions dashboard in the Command Palette. */
   async showStatus(): Promise<void> {
+    const settings = this.getSettings();
     const paths = this.getPaths();
     const venvReady = fs.existsSync(paths.venvPython);
     const dbReady = fs.existsSync(paths.metadataDbPath);
     const zoteroReady = Boolean(paths.zoteroDir && fs.existsSync(path.join(paths.zoteroDir, 'zotero.sqlite')));
+    const port = settings.webUiPort || 8000;
+    const daemonUp = await httpOk(`http://127.0.0.1:${port}/api/health`, 500);
     const clients = inspectClientRegistrations();
     const clientSummary = [
-      clients.antigravity ? 'Antigravity ✓' : 'Antigravity ✗',
-      clients.claudeCode ? 'Claude Code ✓' : 'Claude Code ✗',
-      clients.vsCodeUser ? 'VS Code ✓' : 'VS Code ✗',
+      `Antigravity ${clients.antigravity ? (clients.antigravityMcp ? 'CLI+MCP' : 'CLI') : '✗'}`,
+      `Claude ${clients.claudeCode ? (clients.claudeCodeMcp ? 'CLI+MCP' : 'CLI') : '✗'}`,
+      `VS Code MCP ${clients.vsCodeUser ? '✓' : 'off'}`,
     ].join('  ·  ');
 
     const items: Array<vscode.QuickPickItem & { action?: () => Promise<void> | void }> = [
       {
         label: venvReady ? '$(check) Environment Ready' : '$(warning) Environment Not Installed',
-        description: paths.installDir,
+        description: `Daemon: ${daemonUp ? `running (:${port})` : 'stopped'}  ·  Mode: ${settings.mcpFallback ? 'CLI + MCP' : 'CLI-only'}`,
         detail: `DB: ${dbReady ? paths.metadataDbPath : 'not found'}  |  Zotero: ${zoteroReady ? paths.zoteroDir : 'not configured'}`,
       },
       {
@@ -829,7 +986,7 @@ export class ResearchAssistantService implements vscode.Disposable {
       { label: '', kind: vscode.QuickPickItemKind.Separator },
       {
         label: '$(tools) Set Up / Reconfigure Research Assistant',
-        detail: 'Create/update .venv, choose data & Zotero folder, configure embeddings & MCP',
+        detail: 'Create/update .venv, choose data & Zotero folder, configure embeddings & CLI/MCP',
         action: () => this.setupWizard(),
       },
       {
@@ -839,17 +996,17 @@ export class ResearchAssistantService implements vscode.Disposable {
       },
       {
         label: '$(globe) Open Research Assistant Web UI',
-        detail: `Launch http://127.0.0.1:${this.getSettings().webUiPort || 8000}`,
+        detail: `Launch http://127.0.0.1:${port}`,
         action: () => this.openWebUi(),
       },
       {
-        label: '$(extensions) Register MCP & Citation Skills',
-        detail: 'Write Antigravity plugin, Claude Code MCP/skill, and VS Code mcp.json',
+        label: '$(extensions) Register AI Clients (CLI / MCP Fallback)',
+        detail: 'Configure Antigravity plugin, Claude Code skill/MCP, and VS Code mcp.json',
         action: () => this.registerClientsInteractive(),
       },
       {
         label: '$(file-add) Install Citation Rules in Current Workspace (.agents/)',
-        detail: 'Copies citation-evidence skill & rules into this repository',
+        detail: 'Copies CLI-first citation-evidence skill & rules into this repository',
         action: () => this.installWorkspaceSkill(),
       },
       {

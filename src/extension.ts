@@ -160,8 +160,33 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     clearTimeout(autoTimer);
     autoTimer = setTimeout(() => void session.request({ document }), delayMs);
   };
-  const trigger = (document: vscode.TextDocument) =>
-    vscode.workspace.getConfiguration(CONFIG_SECTION, document.uri).get<string>('compile.trigger', 'save');
+  const trigger = (uri?: vscode.Uri) =>
+    vscode.workspace.getConfiguration(CONFIG_SECTION, uri).get<string>('compile.trigger', 'save');
+
+  const isInsideProject = async (document: vscode.TextDocument): Promise<boolean> => {
+    const project = await projects.resolve(document, false);
+    if (!project) return false;
+    const rel = path.relative(project.mainDir, document.uri.fsPath);
+    return rel !== '' ? !rel.startsWith('..') && !path.isAbsolute(rel) : true;
+  };
+
+  const pushAutoCompileToAll = () => {
+    const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
+    for (const uri of viewer.openUris()) {
+      viewer.setAutoCompile(uri, trigger(folder ?? uri));
+    }
+  };
+
+  const toggleAutoCompile = async (uri: vscode.Uri) => {
+    const folder = vscode.workspace.getWorkspaceFolder(uri) ?? vscode.workspace.workspaceFolders?.[0];
+    const cfg = vscode.workspace.getConfiguration(CONFIG_SECTION, folder?.uri);
+    const current = cfg.get<string>('compile.trigger', 'save');
+    const next = current === 'off' ? 'save' : 'off';
+    const target = folder ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
+    await cfg.update('compile.trigger', next, target);
+    pushAutoCompileToAll();
+    status(next === 'off' ? 'auto-compile on save OFF' : 'auto-compile on save ON');
+  };
 
   context.subscriptions.push(
     session,
@@ -172,7 +197,16 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     wordFlash,
     vscode.window.registerCustomEditorProvider(VIEW_TYPE, viewer),
     viewer.onInverseSearch(({ uri, request }) => void inverseSearch(uri, request)),
-    viewer.onReady((uri) => void pushCitations(uri, true)),
+    viewer.onReady((uri) => {
+      const folder = vscode.workspace.getWorkspaceFolder(uri) ?? vscode.workspace.workspaceFolders?.[0];
+      viewer.setAutoCompile(uri, trigger(folder?.uri ?? uri));
+      void pushCitations(uri, true);
+    }),
+    viewer.onToggleAutoCompile((uri) => void toggleAutoCompile(uri)),
+    viewer.onShowLog(() => {
+      session.showLog();
+      void vscode.commands.executeCommand('workbench.actions.view.problems');
+    }),
     viewer.onResolveCiteFile(({ uri, request }) => void resolveCiteFile(uri, request)),
     citations.onDidChange(() => void pushCitationsToAll(false)),
     researchAssistant.onDidSyncZotero(() => void pushCitationsToAll(true)),
@@ -182,6 +216,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration(`${CONFIG_SECTION}.citations`) || event.affectsConfiguration(`${CONFIG_SECTION}.researchAssistant`)) {
         void pushCitationsToAll(true);
+      }
+      if (event.affectsConfiguration(`${CONFIG_SECTION}.compile.trigger`)) {
+        pushAutoCompileToAll();
       }
     }),
     vscode.commands.registerCommand('openScriptorium.compile', () => compile({})),
@@ -198,13 +235,17 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('openScriptorium.researchAssistant.registerClients', () => researchAssistant.registerClientsInteractive()),
     vscode.commands.registerCommand('openScriptorium.researchAssistant.installWorkspaceSkill', () => researchAssistant.installWorkspaceSkill()),
     vscode.workspace.onDidSaveTextDocument((document) => {
-      if (session.savingForBuild || !LATEX_FILE.test(document.fileName) || trigger(document) !== 'save') return;
-      scheduleBuild(document, SAVE_DEBOUNCE_MS);
+      if (session.savingForBuild || !LATEX_FILE.test(document.fileName) || trigger(document.uri) !== 'save') return;
+      void isInsideProject(document).then((inside) => {
+        if (inside) scheduleBuild(document, SAVE_DEBOUNCE_MS);
+      });
     }),
     vscode.workspace.onDidChangeTextDocument(({ document, contentChanges }) => {
-      if (!contentChanges.length || !LATEX_FILE.test(document.fileName) || trigger(document) !== 'typing') return;
+      if (!contentChanges.length || !LATEX_FILE.test(document.fileName) || trigger(document.uri) !== 'typing') return;
       const delay = vscode.workspace.getConfiguration(CONFIG_SECTION, document.uri).get<number>('compile.typingDelayMs', 2800);
-      scheduleBuild(document, delay);
+      void isInsideProject(document).then((inside) => {
+        if (inside) scheduleBuild(document, delay);
+      });
     }),
     { dispose: () => clearTimeout(autoTimer) },
   );

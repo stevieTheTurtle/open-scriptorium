@@ -1,39 +1,52 @@
 ---
 name: citation-evidence
 description: >-
-  Search the local Research Assistant paper library via MCP and maintain
-  verbatim citation evidence notes in references.notes.json whenever adding or
-  verifying LaTeX citations (\cite, \citep, \citet). Use whenever writing or
-  editing LaTeX prose with citations, answering literature questions from the
-  user's library, or auditing unverified (yellow/red) citations in Open LaTeX
-  Studio.
+  Search the local Research Assistant paper library via the low-token `ra` CLI
+  (with optional MCP fallback) and maintain verbatim citation evidence notes in
+  references.notes.json whenever adding or verifying LaTeX citations (\cite,
+  \citep, \citet). Use whenever writing or editing LaTeX prose with citations,
+  answering literature questions from the user's library, or auditing unverified
+  (yellow/red) citations in Open Scriptorium.
 ---
 
-# Citation Evidence & Research Assistant Workflow
+# Citation Evidence & Research Assistant Workflow (CLI-First)
 
-You have access to the user's local paper knowledge base via the
-`research-assistant` MCP server, paired with **Open Scriptorium**'s citation
-evidence system.
+You have access to the user's local paper knowledge base and citation evidence
+helpers via the **`ra` CLI** (`{{RA_CLI_CMD}}`). When Open Scriptorium's warm
+daemon is running, `ra` responds in ~50 ms; otherwise it falls back cleanly to
+direct local execution.
 
-## Tools (`research-assistant` MCP)
+*(Fallback: if shell access is unavailable and the user enabled `openScriptorium.researchAssistant.mcpFallback`, equivalent tools are exposed via the `research-assistant` MCP server.)*
 
-- `search_papers(query, top_k=8)` — Hybrid semantic + keyword search over the
-  user's local paper library. Results include `@citekey` tags, `Paper ID`, and
-  page-numbered chunks `[p.N]`.
-- `get_paper_detail(paper_id)` — Full metadata for a paper.
-- `list_all_papers(tag="", year=0)` — Browse papers in the library.
-- `add_paper(pdf_path, tags="")` — Index a local PDF.
-- `search_arxiv_papers(query, max_results=10)` / `fetch_arxiv_paper(...)` —
-  Online arXiv discovery (only when explicitly requested by the user and enabled
-  in Research Assistant).
+## CLI Commands
+
+Use `--compact` / `--top-k` to keep outputs tight and save tokens.
+
+### Local Paper Library
+- `{{RA_CLI_CMD}} search "<query>" -k 5 --compact` — Compact hybrid semantic + BM25 search returning `@citekey`, `Paper ID`, and `[p.N]` verbatim excerpts.
+- `{{RA_CLI_CMD}} search "<query>" -k 8 --context` — Full `[Ref N]` + `--- REFERENCES BLOCK ---` format for answering literature questions directly in chat.
+- `{{RA_CLI_CMD}} detail <paper_id>` — Full paper metadata & abstract.
+- `{{RA_CLI_CMD}} list [--tag <tag>] [--year <YYYY>] --compact` — Browse indexed papers.
+- `{{RA_CLI_CMD}} add <pdf_path> [--tags "a,b"]` — Index a local PDF.
+- `{{RA_CLI_CMD}} status` — Paper/chunk counts and daemon health.
+
+### Citation Evidence & BibTeX Helpers (Instant — No Need to Read Full JSON/.bib!)
+- `{{RA_CLI_CMD}} notes add --key <citekey> --quote "<1-2 verbatim sentences>" --page <N> --file "<rel.tex>" --claim "<supported phrase>" --paper-id "<id>"`
+  - Auto-discovers `openScriptorium.citations.notesFile` from `.vscode/settings.json` (or `<bib>.notes.json`), appends safely without overwriting existing notes, and keeps JSON valid.
+- `{{RA_CLI_CMD}} notes get <citekey>` — Inspect existing notes for one citekey.
+- `{{RA_CLI_CMD}} notes audit` — Cross-check `.bib`, `references.notes.json`, and `citation_status.json` (lists indexed keys missing notes, yellow second-hand keys, and red unsourced keys).
+- `{{RA_CLI_CMD}} bib get <citekey>` — Print a single BibTeX entry without loading the entire `.bib` file.
+
+### Online arXiv Discovery (Only When Explicitly Requested)
+- `{{RA_CLI_CMD}} arxiv search "<query>" -n 10`
+- `{{RA_CLI_CMD}} arxiv fetch <arxiv_id> [--add --tags "..."]`
 
 ## Mandatory Rule: Every New LaTeX Citation Needs Verbatim Evidence
 
 Whenever you add a `\cite{key}` (`\citep`, `\citet`, `\citealp`, etc.) to any
-`.tex` file, in the **same edit** as the `.tex`/`.bib` change, append an entry
-for `key` to the project's citation notes file (configured by
-`openScriptorium.citations.notesFile`, e.g. `01_Thesis_meta/references.notes.json`,
-or a sibling `<bib>.notes.json` next to the `.bib` file):
+`.tex` file, in the **same turn**, record a verbatim evidence note with
+`{{RA_CLI_CMD}} notes add ...` (targeting `openScriptorium.citations.notesFile`,
+e.g. `01_Thesis_meta/references.notes.json`):
 
 ```json
 {
@@ -52,30 +65,16 @@ or a sibling `<bib>.notes.json` next to the `.bib` file):
 
 ### Strict Guidelines
 
-1. **Retrieve first**: Call `search_papers` before citing. Match the `@citekey`
-   tag returned in the paper's tags and use the chunk's `[p.N]` as `"page"`.
-2. **Copy quotes verbatim**: Never paraphrase, summarize, or invent a quote.
-   Only repair obvious PDF extraction artefacts (line-break hyphens like
-   `inter-\naction` -> `interaction`, or broken ligatures such as `ﬁ` -> `fi`).
-3. **Support the specific claim**: Choose a passage that actually supports the
-   claim being made, not merely the general topic of the paper. If the closest
-   passage only loosely supports the claim, tell the user explicitly.
-4. **Append, do not overwrite**: Each bib key maps to a JSON array of notes.
-   Append to the existing list and keep the JSON valid. Keys starting with `_`
-   are reserved for comments.
-5. **BibTeX entries from Zotero / verified sources only**: Never fabricate
-   BibTeX fields (authors, venues, years, DOIs, page numbers) from memory. If a
-   paper is missing from the library / Zotero, leave it out and inform the user.
-6. **Unindexed or garbled PDFs**: If a cited paper is not in the Research
-   Assistant index (highlighted yellow or red in the Open Scriptorium PDF
-   viewer) or its extracted text is garbled (scanned PDF, poster), do not invent
-   a note; list those citekeys in your reply so the user can check them manually.
+1. **Retrieve first**: Run `{{RA_CLI_CMD}} search "<query>" -k 5 --compact` before citing. Match the `@citekey` tag and use `[p.N]` as `--page`.
+2. **Copy quotes verbatim**: Never paraphrase, summarize, or invent a quote. Only repair obvious PDF extraction artefacts (line-break hyphens like `inter-\naction` -> `interaction`, or broken ligatures such as `ﬁ` -> `fi`).
+3. **Support the specific claim**: Choose a passage that actually supports the claim being made, not merely the paper's general topic. If the closest passage only loosely supports the claim, tell the user explicitly.
+4. **Append, do not overwrite**: Always use `ra notes add` (or append to the key's JSON array while preserving `_`-prefixed comment keys).
+5. **BibTeX entries from Zotero / verified sources only**: Never fabricate BibTeX fields from memory. If a paper is missing from the library / Zotero, leave it out and inform the user.
+6. **Unindexed or garbled PDFs**: If a cited paper is not in the Research Assistant index (yellow/red in the PDF viewer) or its extracted text is garbled (scanned PDF, poster), do not invent a note; list those citekeys in your reply for manual verification.
 
 ## Answering General Research Questions (Non-LaTeX)
 
-When answering literature questions directly in chat using `search_papers`:
+When answering literature questions directly in chat using `{{RA_CLI_CMD}} search "<query>" --context`:
 - Cite every claim inline as `[Ref N]` matching the evidence block number.
-- Copy the `--- REFERENCES BLOCK ---` verbatim under `## References` at the end
-  of your answer.
-- Clearly distinguish local library results (`search_papers`) from online arXiv
-  results (`search_arxiv_papers`).
+- Copy the `--- REFERENCES BLOCK ---` verbatim under `## References` at the end of your answer.
+- Clearly distinguish local library results (`ra search`) from online arXiv results (`ra arxiv search`).

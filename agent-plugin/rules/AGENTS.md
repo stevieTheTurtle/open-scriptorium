@@ -1,18 +1,7 @@
 # Open Scriptorium — Research Assistant & Citation Evidence Rules
 
-When working on LaTeX documents or answering literature questions in a workspace
-using Open Scriptorium and the `research-assistant` MCP server:
+When writing/editing LaTeX with citations or answering literature questions:
 
-1. **Always verify claims against the local library** using `search_papers`
-   before citing papers or quoting findings. Never invent quotes or BibTeX
-   entries from memory.
-2. **Every new `\cite{...}` requires a verbatim evidence note**: In the same
-   edit as adding a citation to a `.tex` file, append an evidence note
-   (`quote`, `page`, `file`, `claim`, `paper_id`, `added`) to the project's
-   citation notes JSON file (`openScriptorium.citations.notesFile` or sibling
-   `<bib>.notes.json`). Follow the `citation-evidence` skill for the exact
-   schema and handling of unindexed/garbled PDFs.
-3. **Copy quotes verbatim** from retrieved chunks (fixing only PDF line-break
-   hyphens and broken ligatures). Never paraphrase or fabricate a quote.
-4. **Keep local KB and arXiv separate**: Use `search_papers` for the user's own
-   library and `search_arxiv_papers` only when explicitly asked to search online.
+1. **Follow the `citation-evidence` skill** and use the `ra` CLI (or `research-assistant` MCP if enabled as fallback) to retrieve papers from the local library before citing. Never invent quotes or BibTeX fields from memory.
+2. **Every new `\cite{...}` requires a verbatim evidence note** in the same edit: run `ra notes add --key <key> --quote "<verbatim>" --page <N> --file "<rel.tex>" --claim "<claim>" --paper-id "<id>"` (or append to `references.notes.json`). Copy quotes verbatim (fixing only PDF line-break hyphens/ligatures).
+3. **Keep local library (`ra search`) and online arXiv (`ra arxiv search`) separate**: only query arXiv when explicitly asked.

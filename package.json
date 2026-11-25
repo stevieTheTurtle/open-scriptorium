@@ -1,8 +1,8 @@
 {
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
-  "description": "LaTeX writing studio for VS Code & Antigravity: Tectonic builds, SyncTeX PDF preview, bundled Research Assistant MCP, Zotero sync, and verbatim citation verification.",
-  "version": "0.1.0",
+  "description": "LaTeX writing studio for VS Code & Antigravity: Tectonic builds, SyncTeX PDF preview, bundled Research Assistant CLI & opt-in MCP, Zotero sync, and verbatim citation verification.",
+  "version": "0.2.0",
   "publisher": "open-scriptorium",
   "icon": "assets/icon.png",
   "private": true,
@@ -427,7 +427,19 @@
           "minimum": 1024,
           "maximum": 65535,
           "scope": "window",
-          "markdownDescription": "Local port for the Research Assistant Web UI."
+          "markdownDescription": "Local port for the Research Assistant Web UI and warm CLI daemon."
+        },
+        "openScriptorium.researchAssistant.mcpFallback": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "markdownDescription": "Also register the stdio Research Assistant MCP server (opt-in fallback for clients without shell access). When false, Open Scriptorium configures the lower-token `ra` CLI only."
+        },
+        "openScriptorium.researchAssistant.autoStartDaemon": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Keep the local Research Assistant HTTP service warm in the background while a LaTeX workspace is open so `ra` CLI searches respond in ~50 ms and the Web UI opens immediately."
         }
       }
     }

@@ -135,7 +135,11 @@ export class CompileSession implements vscode.Disposable {
     this.runs++;
     this.output.clear();
     this.status.text = '$(sync~spin) LaTeX: compiling';
-    this.viewer.setBusy(vscode.Uri.file(project.pdfPath), true);
+    const pdfTargets = this.targetPdfUris(project);
+    for (const uri of pdfTargets) {
+      this.viewer.setBusy(uri, true);
+      this.viewer.setCompileStatus(uri, { state: 'compiling' });
+    }
 
     let result: CompileResult;
     try {
@@ -151,12 +155,21 @@ export class CompileSession implements vscode.Disposable {
       });
       if (result.success) await this.copyPdf(project);
     } finally {
-      this.viewer.setBusy(vscode.Uri.file(project.pdfPath), false);
+      for (const uri of pdfTargets) this.viewer.setBusy(uri, false);
     }
 
     const counts = this.publishDiagnostics(project, result.issues);
     this.showOutcome(result, counts);
-    if (result.success) await this.viewer.refresh(vscode.Uri.file(project.pdfPath));
+    const localWarnings = counts.warnings - Math.min(counts.fromPackages, counts.warnings);
+    for (const uri of pdfTargets) {
+      this.viewer.setCompileStatus(
+        uri,
+        result.success
+          ? { state: 'success', durationMs: result.durationMs, warnings: localWarnings }
+          : { state: 'error', errors: counts.errors, message: result.error },
+      );
+      if (result.success) await this.viewer.refresh(uri);
+    }
     if (manual && !result.success) {
       await vscode.commands.executeCommand('workbench.actions.view.problems');
       if (result.error) void vscode.window.showErrorMessage(`Open Scriptorium: could not run Tectonic: ${result.error}`);
@@ -165,6 +178,19 @@ export class CompileSession implements vscode.Disposable {
     const finished = { project, result, manual };
     this.finished.fire(finished);
     return finished;
+  }
+
+  /** Both the primary built PDF and any `copyPdfTo` mirror, so either open tab gets status & reload events. */
+  private targetPdfUris(project: Project): vscode.Uri[] {
+    const uris = [vscode.Uri.file(project.pdfPath)];
+    const setting = vscode.workspace.getConfiguration(CONFIG_SECTION, project.folder?.uri).get<string>('copyPdfTo', '');
+    if (setting) {
+      const target = path.isAbsolute(setting) ? setting : path.join(project.folder?.uri.fsPath ?? project.mainDir, setting);
+      if (path.relative(project.pdfPath, target) !== '') {
+        uris.push(vscode.Uri.file(target));
+      }
+    }
+    return uris;
   }
 
   private findTectonic(project: Project): string | null {
