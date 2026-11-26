@@ -3,8 +3,8 @@
 This guide explains how to set up **everything** in **Open Scriptorium** on a new PC — both interactively (for human users in **VS Code** / **Antigravity IDE**) and non-interactively (for **AI agents** setting up a fresh machine from the terminal).
 
 It covers:
-1. The **Open Scriptorium** extension (Tectonic LaTeX compiler, PDF.js preview, two-way SyncTeX, citation tooltips).
-2. The bundled **Research Assistant** system (local paper RAG database, **MCP server**, **Zotero library sync**, **Web UI / REST API**, **citation status verification**, and **agent citation-evidence skill & rules**).
+1. The **Open Scriptorium** extension (auto-installed Tectonic LaTeX compiler, PDF.js preview with outline/search/hyperlinks, two-way SyncTeX, citation tooltips).
+2. The bundled **Research Assistant** system (local paper RAG database, **low-token `ra` CLI + warm local daemon**, **opt-in MCP fallback server**, **Zotero library sync**, **Web UI / REST API**, **citation status verification**, and **agent citation-evidence skill & rules**).
 
 ---
 
@@ -19,9 +19,9 @@ open-scriptorium (VS Code / Antigravity extension)
 ├── dist/                      Compiled extension + PDF.js viewer
 ├── research-assistant/        Bundled Python source (~160 KB; no .venv or data/)
 │   ├── core/                  SQLite FTS5 + ChromaDB + sentence-transformers/Ollama
-│   ├── mcp_server/            Stdio FastMCP server (search_papers, get_paper_detail, ...)
-│   ├── api/ & ui/             FastAPI server + Web UI (http://127.0.0.1:8000)
-│   ├── cli/                   Typer CLI (ra add/search/list/serve)
+│   ├── mcp_server/            Opt-in stdio FastMCP server (enabled via mcpFallback)
+│   ├── api/ & ui/             FastAPI warm daemon + Web UI (http://127.0.0.1:8000)
+│   ├── cli/                   CLI-first `ra` tool (`search/detail/list/add/arxiv` + stdlib `notes` & `bib`)
 │   └── scripts/
 │       ├── zotero_sync.py     Read-only incremental Zotero PDF -> index sync
 │       └── citation_status.py Stdlib-only .bib <-> metadata.db citation verifier
@@ -64,8 +64,8 @@ Runtime state on each PC (kept outside the extension folder so upgrades never wi
 
 ## Part 1: Install Open Scriptorium (VS Code / Antigravity IDE)
 
-### Option A — Install from Marketplace / Open VSX (recommended)
-Search for **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) in the Extensions view (`Ctrl+Shift+X`), or install via CLI:
+### Option A — Install from VS Code Marketplace (recommended)
+Search for **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) in the Extensions view (`Ctrl+Shift+X`), open the [Marketplace listing](https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium), or install via CLI:
 ```bash
 code --install-extension stevieTheTurtle.open-scriptorium
 ```
@@ -122,11 +122,11 @@ Inside **VS Code** or **Antigravity IDE**:
    3. **Zotero Folder (`ZOTERO_DIR`)**: auto-detects `zotero.sqlite` in `OneDrive*/ZoteroDocuments` or `~/Zotero` (or browse / skip).
    4. **Embedding Provider**: pick `sentence_transformers` (fully offline, default) or `ollama` (`nomic-embed-text`, pre-filled from an existing `config.yaml` if detected).
    5. **AI Clients to Register**: multi-select any combination of:
-      - **Antigravity IDE** — creates the plugin `~/.gemini/config/plugins/open-scriptorium-research/` (MCP server + `citation-evidence` skill + always-on rules)
-      - **Claude Code CLI** — adds `research-assistant` to `~/.claude.json` + installs `~/.claude/skills/citation-evidence/SKILL.md`
-      - **VS Code** — writes VS Code user `mcp.json` + enables the built-in `mcpServerDefinitionProviders` contribution
+      - **Antigravity IDE** — creates the plugin `~/.gemini/config/plugins/open-scriptorium-research/` (`citation-evidence` skill + always-on rules targeting the `ra` CLI, plus `mcp_config.json` when `openScriptorium.researchAssistant.mcpFallback` is enabled)
+      - **Claude Code CLI** — installs `~/.claude/skills/citation-evidence/SKILL.md` (and adds `research-assistant` to `~/.claude.json` when `mcpFallback` is enabled)
+      - **VS Code** — writes VS Code user `mcp.json` + enables the built-in `mcpServerDefinitionProviders` contribution when `mcpFallback` is enabled
 4. Wait for `.venv` creation and dependency installation (first run takes 1–4 min; `uv` makes it much faster).
-5. When prompted, click **Sync Zotero Now** (if you use Zotero) and restart Antigravity / Claude Code / VS Code if they were already running so they load the new MCP server.
+5. When prompted, click **Sync Zotero Now** (if you use Zotero) and restart Antigravity / Claude Code / VS Code if they were already running so they load the updated plugin/skills.
 
 ### Everyday Commands (Command Palette)
 - `Open Scriptorium: Research Assistant: Status & Actions` — health check dashboard + quick actions
@@ -385,9 +385,12 @@ In User `settings.json`, set:
      - **Red box (unverified)**: nothing in the library mentions the paper.
 
 ### Research Assistant Web UI & CLI
-- **Web UI**: Run `Open Scriptorium: Research Assistant: Open Web UI` (or `ra-ui.bat` / `./ra-ui`) → `http://127.0.0.1:8000` to drag-drop PDFs, browse collections, edit tags, toggle arXiv search, and test search queries.
-- **REST API** (on the same port): `POST /api/search`, `GET /api/papers`, `GET /api/papers/{id}`, `POST /api/papers/upload`, `DELETE /api/papers/{id}`.
-- **CLI**: `ra search "query"`, `ra list`, `ra add paper.pdf --tags foo`, `ra status`.
+- **Web UI**: Run `Open Scriptorium: Research Assistant: Open Web UI` (or `ra-ui.bat` / `./ra-ui`) → `http://127.0.0.1:8000` to drag-drop PDFs, browse collections, edit tags, toggle arXiv search, and test search queries. When `openScriptorium.researchAssistant.autoStartDaemon` is enabled (default), this local service stays warm while a LaTeX workspace is open so CLI queries complete in ~50 ms.
+- **REST API** (on the same port): `POST /api/search`, `GET /api/papers`, `GET /api/papers/{id}`, `POST /api/papers/upload`, `DELETE /api/papers/{id}`, `GET /api/health`.
+- **CLI (`ra` / `ra.bat`)**:
+  - Library: `ra search "query" -k 5 --compact`, `ra search "query" -k 8 --context`, `ra detail <paper_id>`, `ra list [--tag <tag>] [--year <YYYY>] --compact`, `ra add paper.pdf --tags "a,b"`, `ra status`.
+  - Citation evidence & BibTeX (instant stdlib helpers): `ra notes add --key <key> --quote "..." --page <N> --file "<rel.tex>" --claim "..." --paper-id "<id>"`, `ra notes get <key>`, `ra notes audit`, `ra bib get <key>`.
+  - Online arXiv (only when requested): `ra arxiv search "query" -n 10`, `ra arxiv fetch <arxiv_id> [--add --tags "..."]`.
 
 ---
 

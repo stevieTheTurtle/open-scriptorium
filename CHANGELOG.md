@@ -2,6 +2,15 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.3.1] - 2026-11-26
+
+### Changed
+- Refreshed `README.md` and `SETUP.md` to reflect the CLI-first Research Assistant (`ra` CLI + warm local daemon + opt-in `mcpFallback`), PDF viewer outline/search/hyperlink navigation, complete settings reference, and Marketplace badges.
+- Updated extension package metadata (`author`, `description`, `categories`, `keywords`, burgundy `galleryBanner`) and GitHub repository metadata.
+
+### Fixed
+- Removed a stray UTF-8 BOM from `.vscodeignore` so packaging rules match `.git/**` cleanly.
+
 ## [0.3.0] - 2026-11-25
 
 ### Added

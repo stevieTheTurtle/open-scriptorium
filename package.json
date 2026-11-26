@@ -1,12 +1,16 @@
 {
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
-  "description": "LaTeX writing studio for VS Code & Antigravity: Tectonic builds, SyncTeX PDF preview, bundled Research Assistant CLI & opt-in MCP, Zotero sync, and verbatim citation verification.",
-  "version": "0.3.0",
+  "description": "FOSS LaTeX studio for VS Code & Antigravity: auto-installed Tectonic, SyncTeX PDF preview, bundled Research Assistant CLI & opt-in MCP, Zotero sync, and verbatim citation verification.",
+  "version": "0.3.1",
   "publisher": "stevieTheTurtle",
+  "author": {
+    "name": "Stefano Calzolari",
+    "url": "https://github.com/stevieTheTurtle"
+  },
   "icon": "assets/icon.png",
   "galleryBanner": {
-    "color": "#1c2331",
+    "color": "#4f141e",
     "theme": "dark"
   },
   "qna": "https://github.com/stevieTheTurtle/open-scriptorium/issues",
@@ -26,17 +30,20 @@
     "synctex",
     "pdf",
     "zotero",
-    "mcp",
+    "bibtex",
     "citations",
     "research-assistant",
-    "rag"
+    "mcp",
+    "rag",
+    "antigravity"
   ],
   "engines": {
     "vscode": "^1.99.0"
   },
   "categories": [
     "Programming Languages",
-    "Visualization"
+    "Visualization",
+    "Education"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
