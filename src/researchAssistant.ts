@@ -9,6 +9,7 @@ import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { findOnPath } from './compile.ts';
+import type { FindSupportResponse } from './citationFinder.ts';
 import { CONFIG_SECTION } from './project.ts';
 import {
   antigravityPluginDir,
@@ -87,6 +88,61 @@ function httpOk(url: string, timeoutMs = 1500): Promise<boolean> {
       req.destroy();
       resolve(false);
     });
+  });
+}
+
+function httpPostJson<T>(
+  url: string,
+  payload: unknown,
+  timeoutMs = 120000,
+): Promise<{ status: number; data?: T; error?: string }> {
+  return new Promise((resolve) => {
+    const body = Buffer.from(JSON.stringify(payload), 'utf8');
+    const parsed = new URL(url);
+    const req = http.request(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port || 80,
+        path: parsed.pathname + parsed.search,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': body.length,
+        },
+        timeout: timeoutMs,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on('data', (c: Buffer) => chunks.push(c));
+        res.on('end', () => {
+          const text = Buffer.concat(chunks).toString('utf8');
+          const status = res.statusCode ?? 500;
+          if (status >= 200 && status < 300) {
+            try {
+              resolve({ status, data: JSON.parse(text) as T });
+            } catch (err) {
+              resolve({ status, error: `Invalid JSON response: ${(err as Error).message}` });
+            }
+          } else {
+            let detail = text;
+            try {
+              const obj = JSON.parse(text);
+              if (typeof obj?.detail === 'string') detail = obj.detail;
+            } catch {
+              // keep raw text
+            }
+            resolve({ status, error: detail || `HTTP ${status}` });
+          }
+        });
+      },
+    );
+    req.on('error', (err) => resolve({ status: 0, error: err.message }));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ status: 0, error: 'Request timed out' });
+    });
+    req.write(body);
+    req.end();
   });
 }
 
@@ -917,6 +973,91 @@ export class ResearchAssistantService implements vscode.Disposable {
     });
     const result = await this.daemonStarting;
     return { ...result, url: baseUrl };
+  }
+
+  /** Queries the local Research Assistant (warm daemon with CLI fallback) for supporting citations. */
+  async findSupportingCitations(
+    claim: string,
+    options: {
+      topK?: number;
+      recallK?: number;
+      useReranker?: boolean;
+      rerankerModel?: string;
+    } = {},
+  ): Promise<{ ok: boolean; data?: FindSupportResponse; error?: string; needsSetup?: boolean }> {
+    const paths = this.getPaths();
+    if (!fs.existsSync(paths.venvPython)) {
+      return {
+        ok: false,
+        needsSetup: true,
+        error: 'Research Assistant is not set up yet. Run "Research Assistant: Set Up / Configure" first.',
+      };
+    }
+    if (!fs.existsSync(paths.metadataDbPath)) {
+      return {
+        ok: false,
+        needsSetup: true,
+        error: `No Research Assistant paper database found at ${paths.metadataDbPath}. Sync Zotero or run Setup first.`,
+      };
+    }
+
+    const topK = options.topK ?? 8;
+    const recallK = options.recallK ?? 30;
+    const useReranker = options.useReranker !== false;
+    const rerankerModel = options.rerankerModel?.trim() || undefined;
+
+    // 1. Try warm local daemon first (~150-400 ms once CrossEncoder is cached in RAM).
+    const daemon = await this.ensureDaemonRunning({ silent: true });
+    if (daemon.ok) {
+      const resp = await httpPostJson<FindSupportResponse>(
+        `${daemon.url}/api/citations/find-support`,
+        {
+          claim,
+          top_k: topK,
+          recall_k: recallK,
+          use_reranker: useReranker,
+          reranker_model: rerankerModel ?? null,
+        },
+        120000,
+      );
+      if (resp.data) return { ok: true, data: resp.data };
+      // If an older daemon is still running on this port (404), fall through cleanly to direct CLI execution.
+      if (resp.status !== 404 && resp.status !== 0) {
+        return { ok: false, error: resp.error ?? `HTTP ${resp.status}` };
+      }
+    }
+
+    // 2. Direct in-process Python CLI fallback (works even if an older daemon holds the port).
+    const spec = buildMcpLaunchSpec(paths, undefined, this.getSettings().webUiPort || 8000);
+    const args = [
+      '-m',
+      'cli',
+      'find-support',
+      claim,
+      '--top-k',
+      String(topK),
+      '--recall-k',
+      String(recallK),
+      '--local',
+      '--json',
+    ];
+    if (!useReranker) args.push('--no-rerank');
+    if (rerankerModel) args.push('--model', rerankerModel);
+
+    const run = await runProcess(paths.venvPython, args, {
+      cwd: paths.installDir,
+      env: { ...process.env, ...spec.env },
+    });
+    if (run.code !== 0) {
+      const errLine = (run.stderr || run.stdout).trim().split(/\r?\n/).slice(-3).join(' | ');
+      return { ok: false, error: errLine || `Research Assistant exited with code ${run.code}` };
+    }
+    try {
+      const parsed = JSON.parse(run.stdout) as FindSupportResponse;
+      return { ok: true, data: parsed };
+    } catch (err) {
+      return { ok: false, error: `Could not parse Research Assistant response: ${(err as Error).message}` };
+    }
   }
 
   /** Launches (if needed) and opens the Research Assistant Web UI in the default browser. */

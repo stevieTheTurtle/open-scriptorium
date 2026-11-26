@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import { extractSentenceAtPosition } from './citationFinder.ts';
+import { CitationFinderPanel, type CitationAnchor } from './citationFinderPanel.ts';
 import { CitationService } from './citationService.ts';
 import { EditingFeatures } from './editing.ts';
 import { CONFIG_SECTION, ProjectResolver } from './project.ts';
@@ -7,7 +9,7 @@ import { ResearchAssistantService } from './researchAssistant.ts';
 import { cleanWord, findWordNear } from './reveal.ts';
 import { CompileSession } from './session.ts';
 import { loadSyncTex } from './synctex.ts';
-import { PdfViewer, VIEW_TYPE, type InverseSearchRequest, type ResolveCiteFileRequest } from './viewer.ts';
+import { PdfViewer, VIEW_TYPE, type FindCitationRequest, type InverseSearchRequest, type ResolveCiteFileRequest } from './viewer.ts';
 
 const SAVE_DEBOUNCE_MS = 300;
 const FLASH_MS = 1800;
@@ -29,6 +31,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const editing = new EditingFeatures(projects);
   const researchAssistant = new ResearchAssistantService(context);
   const citations = new CitationService(researchAssistant);
+  const citationFinder = new CitationFinderPanel(context.extensionUri, researchAssistant, () => {
+    void pushCitationsToAll(false);
+  });
   const lineFlash = vscode.window.createTextEditorDecorationType({
     isWholeLine: true,
     backgroundColor: new vscode.ThemeColor('editor.rangeHighlightBackground'),
@@ -149,6 +154,107 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     status('citation status updated');
   }
 
+  async function findCitationFromPdf(uri: vscode.Uri, request: FindCitationRequest) {
+    const project = (await projects.forPdf(uri)) ?? (await projects.resolve(undefined, false));
+    let claim = request.text.trim();
+    if (!claim) {
+      const entered = await vscode.window.showInputBox({
+        title: 'Find Supporting Citation in Zotero',
+        prompt: 'Select text in the PDF first, or type a claim to search your Zotero library:',
+        placeHolder: 'e.g. Transformers rely entirely on self-attention mechanisms',
+      });
+      if (!entered?.trim()) return;
+      claim = entered.trim();
+    }
+
+    let anchor: CitationAnchor | null = null;
+    if (project && typeof request.page === 'number' && typeof request.x === 'number' && typeof request.y === 'number') {
+      const sync = loadSyncTex(project.synctexPath, project.mainDir);
+      const hit = sync?.edit(request.page, request.x, request.y);
+      if (hit) {
+        const texUri = vscode.Uri.file(path.join(project.mainDir, hit.file));
+        try {
+          const doc = await vscode.workspace.openTextDocument(texUri);
+          const lines = doc.getText().split(/\r?\n/);
+          const wordHit = request.word
+            ? findWordNear(lines, hit.line - 1, request.word, request.context ?? '')
+            : null;
+          const lineIdx = Math.max(0, Math.min(wordHit?.line ?? hit.line - 1, doc.lineCount - 1));
+          const endCharacter = wordHit ? wordHit.character + wordHit.length : doc.lineAt(lineIdx).text.length;
+          anchor = {
+            uri: texUri,
+            line: lineIdx,
+            endCharacter,
+            relativeFile: hit.file.replaceAll('\\', '/'),
+            source: 'pdf',
+          };
+        } catch {
+          // If the source file can't be opened, still show results with clipboard fallback.
+        }
+      }
+    }
+
+    await citationFinder.openAndSearch({ rawClaim: claim, anchor, project: project ?? null });
+  }
+
+  async function findSupportingCitation() {
+    const editor = vscode.window.activeTextEditor;
+    if (editor && (editor.document.languageId === 'latex' || /\.tex$/i.test(editor.document.fileName))) {
+      const project = await projects.resolve(editor.document, false);
+      const sel = editor.selection;
+      let rawClaim = '';
+      let anchorLine = sel.end.line;
+      let anchorChar = sel.end.character;
+
+      if (!sel.isEmpty) {
+        rawClaim = editor.document.getText(sel);
+      } else {
+        const lineText = editor.document.lineAt(sel.active.line).text;
+        const sent = extractSentenceAtPosition(lineText, sel.active.character);
+        rawClaim = sent.text;
+        anchorLine = sel.active.line;
+        anchorChar = sent.end;
+      }
+
+      if (!rawClaim.trim()) {
+        const entered = await vscode.window.showInputBox({
+          title: 'Find Supporting Citation in Zotero',
+          prompt: 'Enter a claim or sentence to find supporting citations in Zotero:',
+        });
+        if (!entered?.trim()) return;
+        rawClaim = entered.trim();
+      }
+
+      const relBase = project?.mainDir ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? path.dirname(editor.document.uri.fsPath);
+      const relativeFile = path.relative(relBase, editor.document.uri.fsPath).split(path.sep).join('/');
+      await citationFinder.openAndSearch({
+        rawClaim,
+        anchor: {
+          uri: editor.document.uri,
+          line: anchorLine,
+          endCharacter: anchorChar,
+          relativeFile,
+          source: 'tex',
+        },
+        project: project ?? null,
+      });
+      return;
+    }
+
+    const activePdf = viewer.activeUri();
+    if (activePdf && viewer.requestFindCitation(activePdf)) {
+      return;
+    }
+
+    const entered = await vscode.window.showInputBox({
+      title: 'Find Supporting Citation in Zotero',
+      prompt: 'Enter a claim or passage to search your Zotero library:',
+    });
+    if (!entered?.trim()) return;
+    const project = await projects.resolve(undefined, false);
+    await citationFinder.openAndSearch({ rawClaim: entered.trim(), anchor: null, project: project ?? null });
+  }
+
   async function openPreview() {
     const project = await projects.resolve(vscode.window.activeTextEditor?.document, true);
     if (project) await viewer.open(vscode.Uri.file(project.pdfPath));
@@ -193,6 +299,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     editing,
     researchAssistant,
     citations,
+    citationFinder,
     lineFlash,
     wordFlash,
     vscode.window.registerCustomEditorProvider(VIEW_TYPE, viewer),
@@ -208,6 +315,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       void vscode.commands.executeCommand('workbench.actions.view.problems');
     }),
     viewer.onResolveCiteFile(({ uri, request }) => void resolveCiteFile(uri, request)),
+    viewer.onFindCitation(({ uri, request }) => void findCitationFromPdf(uri, request)),
     citations.onDidChange(() => void pushCitationsToAll(false)),
     researchAssistant.onDidSyncZotero(() => void pushCitationsToAll(true)),
     session.onDidFinish((finished) => {
@@ -229,6 +337,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('openScriptorium.syncToCode', syncToCode),
     vscode.commands.registerCommand('openScriptorium.showLog', () => session.showLog()),
     vscode.commands.registerCommand('openScriptorium.refreshCitationStatus', refreshCitationStatus),
+    vscode.commands.registerCommand('openScriptorium.findSupportingCitation', findSupportingCitation),
     vscode.commands.registerCommand('openScriptorium.researchAssistant.setup', () => researchAssistant.setupWizard()),
     vscode.commands.registerCommand('openScriptorium.researchAssistant.status', () => researchAssistant.showStatus()),
     vscode.commands.registerCommand('openScriptorium.researchAssistant.syncZotero', () => researchAssistant.syncZotero(false)),

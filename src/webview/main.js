@@ -35,6 +35,10 @@ const dom = Object.fromEntries(
     'find-prev',
     'find-next',
     'find-close',
+    'selection-action',
+    'pdf-context-menu',
+    'ctx-find-citation',
+    'ctx-copy-selection',
   ].map((id) => [id, document.getElementById(id)]),
 );
 
@@ -1486,6 +1490,11 @@ window.addEventListener('keydown', (event) => {
     restoreAnchor(navHistory.pop());
     renderVisiblePages();
     updatePageIndicator();
+  } else if ((event.ctrlKey || event.metaKey) && event.altKey && event.key.toLowerCase() === 'c') {
+    event.preventDefault();
+    triggerFindCitationFromSelection();
+  } else if (event.key === 'Escape') {
+    hideSelectionMenus();
   }
 });
 
@@ -1589,7 +1598,148 @@ window.addEventListener('message', (event) => {
       }
       break;
     }
+    case 'requestFindCitation':
+      triggerFindCitationFromSelection();
+      break;
   }
 });
+
+// ---- PDF text selection -> Find Supporting Citation in Zotero -------------------------------
+
+let cachedSelectionPayload = null;
+
+function hideSelectionMenus() {
+  if (dom['selection-action']) dom['selection-action'].hidden = true;
+  if (dom['pdf-context-menu']) dom['pdf-context-menu'].hidden = true;
+}
+
+function extractPdfSelectionPayload() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return null;
+  const text = sel.toString().replace(/\s+/g, ' ').trim();
+  if (!text) return null;
+
+  const range = sel.getRangeAt(0);
+  const ancestor = range.commonAncestorContainer;
+  const ancestorEl = ancestor.nodeType === Node.ELEMENT_NODE ? ancestor : ancestor.parentElement;
+  if (!ancestorEl || !dom.viewer.contains(ancestorEl)) return null;
+
+  const rects = [...range.getClientRects()].filter((r) => r.width > 0.5 || r.height > 0.5);
+  const endRect = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect();
+  const topRect = rects.length ? rects[0] : endRect;
+
+  const endNode = range.endContainer.nodeType === Node.ELEMENT_NODE ? range.endContainer : range.endContainer.parentElement;
+  let pageDiv = endNode?.closest?.('.pdf-page') ?? null;
+  const cx = Math.max(endRect.left, endRect.right - 2);
+  const cy = endRect.top + endRect.height / 2;
+  if (!pageDiv) {
+    const elAtPt = document.elementFromPoint(cx, cy);
+    pageDiv = elAtPt?.closest?.('.pdf-page') ?? null;
+  }
+
+  let page;
+  let x;
+  let y;
+  let word = '';
+  let context = '';
+  if (pageDiv) {
+    const bounds = pageDiv.getBoundingClientRect();
+    page = Number(pageDiv.dataset.page);
+    x = (cx - bounds.left) / view.scale;
+    y = (cy - bounds.top) / view.scale;
+    const hit = wordAtPoint(cx, cy);
+    if (hit) {
+      word = hit.word;
+      context = hit.context;
+    } else {
+      const words = text.split(/\s+/).filter(Boolean);
+      word = words[words.length - 1] ?? '';
+      context = text.slice(-80);
+    }
+  }
+
+  return { text, page, x, y, word, context, topRect, endRect };
+}
+
+function showSelectionPill(payload) {
+  const pill = dom['selection-action'];
+  if (!pill || !payload || payload.text.length < 6) {
+    if (pill) pill.hidden = true;
+    return;
+  }
+  const wrapRect = dom.viewer.getBoundingClientRect();
+  const left = Math.max(8, Math.min(payload.topRect.left - wrapRect.left, wrapRect.width - 130));
+  const top = Math.max(8, payload.topRect.top - wrapRect.top - 30);
+  pill.style.left = `${Math.round(left)}px`;
+  pill.style.top = `${Math.round(top)}px`;
+  pill.hidden = false;
+}
+
+function triggerFindCitationFromSelection(payload = null) {
+  const active = payload ?? extractPdfSelectionPayload() ?? cachedSelectionPayload;
+  hideSelectionMenus();
+  vscode.postMessage({
+    type: 'findCitation',
+    text: active?.text ?? '',
+    page: active?.page,
+    x: active?.x,
+    y: active?.y,
+    word: active?.word,
+    context: active?.context,
+  });
+}
+
+dom.viewer.addEventListener('mouseup', () => {
+  requestAnimationFrame(() => {
+    const payload = extractPdfSelectionPayload();
+    cachedSelectionPayload = payload;
+    if (payload && payload.text.length >= 6) {
+      showSelectionPill(payload);
+    } else {
+      hideSelectionMenus();
+    }
+  });
+});
+
+dom.viewer.addEventListener('contextmenu', (event) => {
+  const payload = extractPdfSelectionPayload();
+  if (!payload || payload.text.length < 3) {
+    hideSelectionMenus();
+    return;
+  }
+  event.preventDefault();
+  cachedSelectionPayload = payload;
+  if (dom['selection-action']) dom['selection-action'].hidden = true;
+  const menu = dom['pdf-context-menu'];
+  if (!menu) return;
+  const wrapRect = dom.viewer.getBoundingClientRect();
+  menu.hidden = false;
+  const menuW = menu.offsetWidth || 230;
+  const menuH = menu.offsetHeight || 64;
+  const left = Math.max(6, Math.min(event.clientX - wrapRect.left, wrapRect.width - menuW - 6));
+  const top = Math.max(6, Math.min(event.clientY - wrapRect.top, wrapRect.height - menuH - 6));
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(top)}px`;
+});
+
+dom['selection-action']?.addEventListener('mousedown', (e) => e.preventDefault());
+dom['selection-action']?.addEventListener('click', () => triggerFindCitationFromSelection(cachedSelectionPayload));
+dom['ctx-find-citation']?.addEventListener('click', () => triggerFindCitationFromSelection(cachedSelectionPayload));
+dom['ctx-copy-selection']?.addEventListener('click', () => {
+  const text = cachedSelectionPayload?.text || window.getSelection()?.toString() || '';
+  if (text && navigator.clipboard?.writeText) void navigator.clipboard.writeText(text);
+  hideSelectionMenus();
+});
+
+document.addEventListener('mousedown', (event) => {
+  const target = event.target;
+  if (
+    !dom['selection-action']?.contains(target) &&
+    !dom['pdf-context-menu']?.contains(target)
+  ) {
+    hideSelectionMenus();
+  }
+});
+dom.viewer.addEventListener('scroll', hideSelectionMenus, { passive: true });
 
 vscode.postMessage({ type: 'ready' });

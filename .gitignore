@@ -7,4 +7,5 @@ _Old/
 research-assistant/.venv/
 research-assistant/data/
 research-assistant/**/__pycache__/
+**/__pycache__/
 research-assistant/*.egg-info/

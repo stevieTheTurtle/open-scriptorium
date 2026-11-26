@@ -2,6 +2,14 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.4.0] - 2026-11-26
+
+### Added
+- **Find Supporting Citation in Zotero (`Ctrl+Alt+C`)**: select text in either a `.tex` editor (right-click context menu / shortcut / auto-sentence at cursor) or the PDF preview tab (floating `"Find Citation"` pill / right-click context menu / shortcut with SyncTeX `.tex` anchor resolution) to search your local Zotero index for supporting claims.
+- **Local zero-LLM claim-support pipeline (`core/claim_support.py`, `POST /api/citations/find-support`, `ra find-support`)**: strips LaTeX/PDF artifacts, runs weighted RRF hybrid recall (ChromaDB semantic + sanitized OR-based FTS5 BM25), reranks with a local cached `sentence-transformers` `CrossEncoder` (supporting both MS-MARCO/BGE and 3-class NLI entailment models, with offline lexical fallback), and extracts 1–2 verbatim supporting sentences with page numbers.
+- **Citation Finder side panel (`CitationFinderPanel`)**: editable claim query, citation command picker (`\cite`, `\citep`, `\citet`, `\parencite`, `\textcite`, `\autocite`), `.bib` fallback key matching, inline quote editing, and one-click `Insert \cite{key} & Save Note` (merges cleanly into adjacent `\cite{...}` and appends to `references.notes.json`).
+- New settings: `openScriptorium.citations.citeCommand` and `openScriptorium.researchAssistant.rerankerModel`.
+
 ## [0.3.1] - 2026-11-26
 
 ### Changed

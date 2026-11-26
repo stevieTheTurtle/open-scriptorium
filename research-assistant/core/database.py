@@ -224,19 +224,83 @@ def delete_chunks_for_paper(paper_id: str) -> None:
     conn.close()
 
 
+_FTS_STOPWORDS = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "been", "being", "between",
+    "both", "but", "by", "can", "could", "did", "do", "does", "during", "each",
+    "for", "from", "had", "has", "have", "having", "he", "her", "here", "hers",
+    "him", "his", "how", "in", "into", "is", "it", "its", "may", "might", "more",
+    "most", "must", "no", "nor", "not", "of", "on", "one", "only", "or", "other",
+    "our", "out", "over", "same", "shall", "she", "should", "so", "some", "such",
+    "than", "that", "the", "their", "them", "then", "there", "these", "they",
+    "this", "those", "through", "to", "too", "under", "up", "use", "used",
+    "using", "very", "was", "we", "were", "what", "when", "where", "which",
+    "while", "who", "will", "with", "within", "without", "would",
+})
+
+
+def build_fts_or_query(text: str, max_terms: int = 24) -> str:
+    """Sanitize free-form prose into a safe OR-based SQLite FTS5 MATCH expression."""
+    import re
+    raw_tokens = re.findall(r"[A-Za-z0-9]{2,}", text or "")
+    if not raw_tokens:
+        return ""
+    seen: set[str] = set()
+    content_tokens: list[str] = []
+    fallback_tokens: list[str] = []
+    for tok in raw_tokens:
+        low = tok.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        fallback_tokens.append(low)
+        if low not in _FTS_STOPWORDS:
+            content_tokens.append(low)
+    terms = (content_tokens or fallback_tokens)[:max_terms]
+    return " OR ".join(f'"{t}"' for t in terms)
+
+
+def fts_search_or(query: str, top_k: int = 30) -> list[tuple[str, str, float]]:
+    """Sanitized OR-based FTS5 BM25 search safe for arbitrary prose/sentences."""
+    match_expr = build_fts_or_query(query)
+    if not match_expr:
+        return []
+    conn = _get_conn()
+    try:
+        rows = conn.execute(
+            """SELECT c.id, c.content, bm25(chunks_fts) AS score
+               FROM chunks_fts
+               JOIN chunks c ON c.rowid = chunks_fts.rowid
+               WHERE chunks_fts MATCH ?
+               ORDER BY score
+               LIMIT ?""",
+            (match_expr, top_k),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    finally:
+        conn.close()
+    return [(r["id"], r["content"], abs(float(r["score"]))) for r in rows]
+
+
 def fts_search(query: str, top_k: int = 20) -> list[tuple[str, str, float]]:
     """Returns (chunk_id, content, bm25_score) ordered by relevance."""
     conn = _get_conn()
-    rows = conn.execute(
-        """SELECT c.id, c.content, bm25(chunks_fts) AS score
-           FROM chunks_fts
-           JOIN chunks c ON c.rowid = chunks_fts.rowid
-           WHERE chunks_fts MATCH ?
-           ORDER BY score
-           LIMIT ?""",
-        (query, top_k),
-    ).fetchall()
+    try:
+        rows = conn.execute(
+            """SELECT c.id, c.content, bm25(chunks_fts) AS score
+               FROM chunks_fts
+               JOIN chunks c ON c.rowid = chunks_fts.rowid
+               WHERE chunks_fts MATCH ?
+               ORDER BY score
+               LIMIT ?""",
+            (query, top_k),
+        ).fetchall()
+    except sqlite3.OperationalError:
+        conn.close()
+        return fts_search_or(query, top_k=top_k)
     conn.close()
+    if not rows:
+        return fts_search_or(query, top_k=top_k)
     return [(r["id"], r["content"], abs(float(r["score"]))) for r in rows]
 
 

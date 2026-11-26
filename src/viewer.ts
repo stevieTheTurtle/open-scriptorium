@@ -34,6 +34,15 @@ export interface ResolveCiteFileRequest {
   y: number;
 }
 
+export interface FindCitationRequest {
+  text: string;
+  page?: number;
+  x?: number;
+  y?: number;
+  word?: string;
+  context?: string;
+}
+
 export interface CompileStatus {
   state: 'idle' | 'compiling' | 'success' | 'error';
   durationMs?: number;
@@ -78,6 +87,8 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
   readonly onToggleAutoCompile = this.toggleAutoCompile.event;
   private readonly showLog = new vscode.EventEmitter<vscode.Uri>();
   readonly onShowLog = this.showLog.event;
+  private readonly findCitation = new vscode.EventEmitter<{ uri: vscode.Uri; request: FindCitationRequest }>();
+  readonly onFindCitation = this.findCitation.event;
 
   private readonly extensionUri: vscode.Uri;
 
@@ -193,6 +204,14 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
     const entry = this.entries.get(uri.toString());
     if (!entry) return false;
     void entry.panel.webview.postMessage({ type: 'syncToCode' });
+    return true;
+  }
+
+  /** Asks the viewer to send its currently selected text for supporting-citation search. */
+  requestFindCitation(uri: vscode.Uri): boolean {
+    const entry = this.entries.get(uri.toString());
+    if (!entry) return false;
+    void entry.panel.webview.postMessage({ type: 'requestFindCitation' });
     return true;
   }
 
@@ -312,6 +331,19 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
           request: { requestId: Number(message.requestId), page: Number(message.page), x: Number(message.x), y: Number(message.y) },
         });
         break;
+      case 'findCitation':
+        this.findCitation.fire({
+          uri: entry.uri,
+          request: {
+            text: typeof message.text === 'string' ? message.text : '',
+            page: typeof message.page === 'number' ? message.page : undefined,
+            x: typeof message.x === 'number' ? message.x : undefined,
+            y: typeof message.y === 'number' ? message.y : undefined,
+            word: typeof message.word === 'string' ? message.word : undefined,
+            context: typeof message.context === 'string' ? message.context : undefined,
+          },
+        });
+        break;
     }
   }
 
@@ -387,6 +419,11 @@ export class PdfViewer implements vscode.CustomReadonlyEditorProvider {
       </div>
       <div id="viewer" title="Double-click to jump to the source"></div>
       <div id="empty" hidden>No PDF yet. Compile the document to create it.</div>
+      <button id="selection-action" hidden title="Find Supporting Citation in Zotero (Ctrl+Alt+C)">Find Citation</button>
+      <div id="pdf-context-menu" role="menu" hidden>
+        <button role="menuitem" id="ctx-find-citation">Find Supporting Citation in Zotero</button>
+        <button role="menuitem" id="ctx-copy-selection">Copy</button>
+      </div>
     </div>
   </div>
   <script id="config" type="application/json">${JSON.stringify(config)}</script>

@@ -388,7 +388,7 @@ In User `settings.json`, set:
 - **Web UI**: Run `Open Scriptorium: Research Assistant: Open Web UI` (or `ra-ui.bat` / `./ra-ui`) → `http://127.0.0.1:8000` to drag-drop PDFs, browse collections, edit tags, toggle arXiv search, and test search queries. When `openScriptorium.researchAssistant.autoStartDaemon` is enabled (default), this local service stays warm while a LaTeX workspace is open so CLI queries complete in ~50 ms.
 - **REST API** (on the same port): `POST /api/search`, `GET /api/papers`, `GET /api/papers/{id}`, `POST /api/papers/upload`, `DELETE /api/papers/{id}`, `GET /api/health`.
 - **CLI (`ra` / `ra.bat`)**:
-  - Library: `ra search "query" -k 5 --compact`, `ra search "query" -k 8 --context`, `ra detail <paper_id>`, `ra list [--tag <tag>] [--year <YYYY>] --compact`, `ra add paper.pdf --tags "a,b"`, `ra status`.
+  - Library: `ra search "query" -k 5 --compact`, `ra search "query" -k 8 --context`, `ra find-support "claim" -k 8`, `ra detail <paper_id>`, `ra list [--tag <tag>] [--year <YYYY>] --compact`, `ra add paper.pdf --tags "a,b"`, `ra status`.
   - Citation evidence & BibTeX (instant stdlib helpers): `ra notes add --key <key> --quote "..." --page <N> --file "<rel.tex>" --claim "..." --paper-id "<id>"`, `ra notes get <key>`, `ra notes audit`, `ra bib get <key>`.
   - Online arXiv (only when requested): `ra arxiv search "query" -n 10`, `ra arxiv fetch <arxiv_id> [--add --tags "..."]`.
 

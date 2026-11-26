@@ -64,6 +64,7 @@ def _daemon_call(
     *,
     use_daemon: bool = True,
     timeout: float = 60.0,
+    fallback_on_404: bool = False,
 ) -> tuple[bool, Any]:
     """Try calling the warm local Research Assistant daemon.
 
@@ -93,6 +94,8 @@ def _daemon_call(
             raw = resp.read().decode("utf-8")
             return True, json.loads(raw) if raw else {}
     except urllib.error.HTTPError as exc:
+        if fallback_on_404 and exc.code == 404:
+            return False, None
         body = exc.read().decode("utf-8", errors="replace")
         try:
             detail = json.loads(body).get("detail", body)
@@ -178,6 +181,68 @@ def search_cmd(
             if char_limit > 0 and len(text) > char_limit:
                 text = text[:char_limit].rstrip() + "..."
             print(f"    [p.{chunk.get('page_number', 0)}] {text}")
+        print()
+
+
+# ─── find-support ────────────────────────────────────────────────────────────
+
+@app.command(name="find-support")
+def find_support_cmd(
+    claim: str = typer.Argument(..., help="Claim or selected LaTeX/PDF text to find supporting citations for"),
+    top_k: int = typer.Option(8, "--top-k", "-k", help="Maximum candidate papers to return"),
+    recall_k: int = typer.Option(30, "--recall-k", help="Hybrid recall pool size before reranking"),
+    no_rerank: bool = typer.Option(False, "--no-rerank", help="Skip local CrossEncoder reranker"),
+    reranker_model: str = typer.Option("", "--model", help="Optional CrossEncoder model override"),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+    local: bool = typer.Option(False, "--local", help="Bypass warm daemon and run directly in-process"),
+):
+    """Find supporting papers and verbatim quotes for a claim (hybrid recall + local reranker)."""
+    payload = {
+        "claim": claim,
+        "top_k": top_k,
+        "recall_k": recall_k,
+        "use_reranker": not no_rerank,
+        "reranker_model": reranker_model or None,
+    }
+    ok, data = _daemon_call(
+        "POST",
+        "/api/citations/find-support",
+        payload,
+        use_daemon=not local,
+        timeout=120.0,
+        fallback_on_404=True,
+    )
+    if not ok:
+        _ensure_local_db()
+        from core.claim_support import find_supporting_citations
+        data = find_supporting_citations(
+            claim,
+            top_k=top_k,
+            recall_k=recall_k,
+            use_reranker=not no_rerank,
+            reranker_model=reranker_model or None,
+        )
+
+    if json_out:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return
+
+    results = data.get("results") or []
+    if not results:
+        print("No supporting citations found.")
+        return
+
+    print(f"Claim: {data.get('claim', '')}")
+    print(f"Reranker: {data.get('reranker', 'none')} | {data.get('elapsed_ms', 0)} ms | {len(results)} candidates\n")
+    for i, r in enumerate(results, 1):
+        pct = int(round(float(r.get("score", 0)) * 100))
+        key = f"@{r['citekey']} | " if r.get("citekey") else ""
+        year = r.get("year") or "n.d."
+        authors = r.get("authors") or []
+        authors_str = ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
+        print(f"[{i}] ({pct}%) {key}{r.get('title', '')} ({year})")
+        print(f"    Authors: {authors_str or 'Unknown'} | ID: {r.get('paper_id', '')}")
+        print(f"    [p.{r.get('page', 0)}] \"{r.get('quote', '')}\"")
         print()
 
 

@@ -95,6 +95,14 @@ class SearchRequest(BaseModel):
     top_k: int = 8
 
 
+class FindSupportRequest(BaseModel):
+    claim: str
+    top_k: int = 8
+    recall_k: int = 30
+    use_reranker: bool = True
+    reranker_model: Optional[str] = None
+
+
 class TagUpdateRequest(BaseModel):
     tags: list[str]
 
@@ -318,6 +326,18 @@ def api_search(req: SearchRequest):
 @app.post("/api/search/context")
 def api_search_context(req: SearchRequest):
     return {"context": get_context_for_query(req.query, top_k=req.top_k)}
+
+
+@app.post("/api/citations/find-support")
+def api_find_support(req: FindSupportRequest):
+    from core.claim_support import find_supporting_citations
+    return find_supporting_citations(
+        req.claim,
+        top_k=req.top_k,
+        recall_k=req.recall_k,
+        use_reranker=req.use_reranker,
+        reranker_model=req.reranker_model,
+    )
 
 
 # ─── arXiv ───────────────────────────────────────────────────────────────────

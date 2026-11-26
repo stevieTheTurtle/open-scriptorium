@@ -40,6 +40,7 @@ A free and open-source local LaTeX writing studio for **VS Code** and **Antigrav
   - **Claude Code CLI** (`~/.claude/skills/citation-evidence/SKILL.md`, plus optional `~/.claude.json` MCP server)
   - **VS Code** (`mcpServerDefinitionProviders` + user `mcp.json` when MCP fallback is enabled)
 - **Automatic PDF citation verification**: a stdlib-only citation bridge matches `.bib` entries against your Zotero index and highlights citations in the PDF preview — **Verified** (with verbatim quote + page tooltips from `references.notes.json`), **Second-hand (yellow)** with extracted citing phrases from papers in your library, and **Unverified (red)**.
+- **Find Supporting Citation in Zotero (`Ctrl+Alt+C`)**: select a claim in either a `.tex` file or the PDF preview tab (via right-click menu, floating PDF selection pill, or `Ctrl+Alt+C`). Open Scriptorium strips LaTeX/PDF artifacts, runs local zero-LLM hybrid recall (ChromaDB + OR-based FTS5 BM25) → local `sentence-transformers` CrossEncoder reranking → sentence-level verbatim quote extraction via the warm daemon, and opens ranked results in a side panel with one-click `\cite{key}` insertion (smartly merging into adjacent `\cite{...}`) and `references.notes.json` logging.
 - **Local Web UI**: launch the Research Assistant Web UI (`http://127.0.0.1:8000`) directly from the Command Palette or LaTeX toolbar to upload PDFs, browse collections, edit tags, and test queries.
 
 **Compile**
@@ -105,6 +106,7 @@ Install a `.vsix` via **Extensions → `...` → Install from VSIX...** (or `cod
 | `Ctrl+Enter` | Compile | LaTeX file or PDF tab |
 | `Ctrl+Alt+Right` | Go to this location in the PDF | LaTeX file |
 | `Ctrl+Alt+Left` | Go to this location in the source | PDF tab |
+| `Ctrl+Alt+C` | Find Supporting Citation in Zotero for selected text | LaTeX file or PDF tab |
 | Double-click | Go to this word in the source | PDF tab |
 | `Ctrl+F` | Find text in PDF (`Enter` / `Shift+Enter` next/prev, `Esc` close) | PDF tab |
 | `Ctrl+Click` | Follow PDF hyperlink (URL, citation, cross-reference, TOC) | PDF tab |
@@ -130,6 +132,7 @@ On macOS, use `Cmd` in place of `Ctrl`. All commands are also in the Command Pal
 | `openScriptorium.citations.notesFile` | *(empty)* | Path to a citation evidence notes JSON file (e.g. `01_Thesis_meta/references.notes.json`) |
 | `openScriptorium.citations.statusFile` | *(empty)* | Path to citation status JSON (defaults to `<outDir>/citation_status.json`) |
 | `openScriptorium.citations.statusCommand` | *(empty)* | Optional custom command to refresh citation status (empty uses the bundled Research Assistant bridge) |
+| `openScriptorium.citations.citeCommand` | `\cite` | Default LaTeX citation command inserted by Find Supporting Citation (`\cite`, `\citep`, `\citet`, `\parencite`, `\textcite`, `\autocite`) |
 | `openScriptorium.researchAssistant.enabled` | `true` | Enable bundled Research Assistant citation checks, CLI/MCP integration, and Zotero sync |
 | `openScriptorium.researchAssistant.installDir` | *(empty)* | Stable install folder for Research Assistant (defaults to `~/.open-scriptorium/research-assistant`) |
 | `openScriptorium.researchAssistant.pythonPath` | *(empty)* | Optional Python 3.10+ executable override for citation checks and initial setup |
@@ -140,6 +143,7 @@ On macOS, use `Cmd` in place of `Ctrl`. All commands are also in the Command Pal
 | `openScriptorium.researchAssistant.webUiPort` | `8000` | Local port for the Research Assistant Web UI and warm CLI daemon |
 | `openScriptorium.researchAssistant.autoStartDaemon` | `true` | Keep the local HTTP service warm in the background for ~50 ms `ra` CLI searches and instant Web UI |
 | `openScriptorium.researchAssistant.mcpFallback` | `false` | Also register the stdio Research Assistant MCP server (opt-in fallback for clients without shell access) |
+| `openScriptorium.researchAssistant.rerankerModel` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Local `sentence-transformers` CrossEncoder model for Find Supporting Citation in Zotero |
 
 If `mainFile` is empty, the document to compile is chosen in this order: a `% !TEX root = ...` comment, the open file if it has `\documentclass`, the last document you compiled, then a search of the workspace.
 
@@ -187,7 +191,7 @@ The end-to-end suite opens a real, isolated VS Code window with a throwaway prof
 | `src/viewer.ts`, `src/webview/` | PDF tab and the PDF.js page inside it (outline, search, hyperlinks, citation tooltips) |
 | `src/synctex.ts`, `src/reveal.ts` | SyncTeX lookups and exact-word matching |
 | `src/editing.ts`, `src/latex.ts`, `src/bib.ts` | Completion, outline, word count, insert commands |
-| `src/citationService.ts`, `src/citations.ts` | Citation notes, status watcher, and built-in bridge runner |
+| `src/citationService.ts`, `src/citations.ts`, `src/citationFinder.ts`, `src/citationFinderPanel.ts` | Citation notes, status watcher, claim-support finder side panel, and built-in bridge runner |
 | `src/researchAssistant.ts`, `src/researchAssistantConfig.ts` | Setup wizard, CLI/MCP & plugin registration, warm daemon, Zotero sync, Web UI launcher |
 | `research-assistant/` | Bundled Research Assistant Python package (`ra` CLI, `notes.py`, opt-in MCP, Zotero sync, Web UI, stdlib `citation_status.py`) |
 | `agent-plugin/` | Bundled `citation-evidence` skill & `AGENTS.md` rules |
