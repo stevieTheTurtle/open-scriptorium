@@ -2,7 +2,7 @@
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
   "description": "FOSS academic research & writing studio uniting AI agents, Zotero, and a bundled local LaTeX studio for VS Code & Antigravity.",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "publisher": "stevieTheTurtle",
   "author": {
     "name": "Stefano Calzolari",

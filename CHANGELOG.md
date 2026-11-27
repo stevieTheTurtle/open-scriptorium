@@ -2,6 +2,11 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.4] - 2026-11-27
+
+### Fixed
+- Replaced the retired Shields.io `visual-studio-marketplace` badge in `README.md` with the Marketplace-approved dynamic `vsmarketplacebadges.dev` version badge.
+
 ## [0.5.3] - 2026-11-27
 
 ### Fixed
