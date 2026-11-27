@@ -18,6 +18,19 @@ export interface ZoteroWatcherOptions {
   now?: () => number;
 }
 
+/**
+ * Number of attachments the sync skipped because Zotero was still renaming/moving them
+ * (`RETRY_PENDING <n>` marker printed by zotero_sync.py). 0 when absent.
+ */
+export function parseRetryPending(output: string): number {
+  const all = [...output.matchAll(/RETRY_PENDING (\d+)/g)];
+  return all.length ? Number(all[all.length - 1][1]) : 0;
+}
+
+/** Delay and cap for the follow-up syncs that pick up attachments Zotero was still renaming. */
+export const SETTLE_RETRY_DELAY_MS = 20_000;
+export const SETTLE_RETRY_MAX = 3;
+
 async function statSignature(p: string): Promise<string | undefined> {
   try {
     const s = await fs.promises.stat(p);

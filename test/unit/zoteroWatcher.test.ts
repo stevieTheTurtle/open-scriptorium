@@ -1,6 +1,18 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ZoteroWatcher } from '../../src/zoteroWatcher.ts';
+import { ZoteroWatcher, parseRetryPending } from '../../src/zoteroWatcher.ts';
+
+test('parseRetryPending reads the last RETRY_PENDING marker from sync output', () => {
+  assert.equal(parseRetryPending(''), 0);
+  assert.equal(parseRetryPending('INFO Done. indexed=3 failed=0 pending=0'), 0);
+  const out = [
+    '2026-11-27 17:33:30 INFO PENDING a.pdf (renamed or moved by Zotero during sync); will retry',
+    '2026-11-27 17:33:31 INFO Done. indexed=12 failed=0 pending=2 metadata_refreshed=4 total=870',
+    '2026-11-27 17:33:31 INFO RETRY_PENDING 2',
+  ].join('\n');
+  assert.equal(parseRetryPending(out), 2);
+  assert.equal(parseRetryPending('RETRY_PENDING 5\n...\nRETRY_PENDING 1\n'), 1);
+});
 
 function harness() {
   let sig: string | undefined = 'm1';

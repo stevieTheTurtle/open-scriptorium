@@ -11,7 +11,7 @@ import * as path from 'node:path';
 import { findOnPath } from './compile.ts';
 import type { FindSupportResponse } from './citationFinder.ts';
 import { CONFIG_SECTION } from './project.ts';
-import { ZoteroWatcher } from './zoteroWatcher.ts';
+import { SETTLE_RETRY_DELAY_MS, SETTLE_RETRY_MAX, ZoteroWatcher, parseRetryPending } from './zoteroWatcher.ts';
 import {
   antigravityPluginDir,
   buildMcpLaunchSpec,
@@ -194,6 +194,8 @@ export class ResearchAssistantService implements vscode.Disposable {
   private syncRunning: Promise<boolean> | undefined;
   private syncTimer: NodeJS.Timeout | undefined;
   private zoteroWatcher: ZoteroWatcher | undefined;
+  private settleTimer: NodeJS.Timeout | undefined;
+  private settleRetries = 0;
   private readonly disposables: vscode.Disposable[] = [];
 
   readonly onDidSyncZotero = this.syncedEmitter.event;
@@ -232,6 +234,7 @@ export class ResearchAssistantService implements vscode.Disposable {
   dispose(): void {
     if (this.syncTimer) clearInterval(this.syncTimer);
     this.zoteroWatcher?.stop();
+    if (this.settleTimer) clearTimeout(this.settleTimer);
     if (this.webUiProcess && !this.webUiProcess.killed) {
       this.webUiProcess.kill();
       this.webUiProcess = null;
@@ -825,6 +828,30 @@ export class ResearchAssistantService implements vscode.Disposable {
     );
   }
 
+  /**
+   * Zotero renames freshly imported PDFs a few seconds after import, so a sync can see some
+   * attachments mid-rename. zotero_sync.py skips those (RETRY_PENDING n); re-sync shortly after,
+   * at most SETTLE_RETRY_MAX times in a row, so new papers are never left out until the next change.
+   */
+  private scheduleSettleRetry(pending: number): void {
+    if (pending <= 0) {
+      this.settleRetries = 0;
+      return;
+    }
+    if (this.settleRetries >= SETTLE_RETRY_MAX) {
+      this.output.appendLine(`[warn] ${pending} Zotero attachment(s) still changing; they will be picked up by the next sync.`);
+      this.settleRetries = 0;
+      return;
+    }
+    this.settleRetries++;
+    if (this.settleTimer) clearTimeout(this.settleTimer);
+    this.output.appendLine(`[watch] ${pending} attachment(s) were being renamed by Zotero; re-syncing in ${SETTLE_RETRY_DELAY_MS / 1000}s…`);
+    this.settleTimer = setTimeout(() => {
+      this.settleTimer = undefined;
+      void this.syncZotero(true);
+    }, SETTLE_RETRY_DELAY_MS);
+  }
+
   /** Runs incremental Zotero PDF sync into the Research Assistant index. */
   async syncZotero(silent = false): Promise<boolean> {
     if (this.syncRunning) {
@@ -866,6 +893,7 @@ export class ResearchAssistantService implements vscode.Disposable {
       if (res.code === 0) {
         this.output.appendLine('[ok] Zotero sync complete.');
         this.syncedEmitter.fire();
+        this.scheduleSettleRetry(parseRetryPending(res.stdout + res.stderr));
         return true;
       }
       this.output.appendLine(`[error] Zotero sync exited with code ${res.code}.`);

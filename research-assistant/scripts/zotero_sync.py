@@ -226,6 +226,17 @@ def _save_state(state: dict) -> None:
     tmp.replace(STATE_PATH)
 
 
+PENDING_WINDOW_S = 600
+
+
+def _recently_changed(folder: Path) -> bool:
+    """True if a Zotero attachment folder was modified in the last few minutes."""
+    try:
+        return time.time() - folder.stat().st_mtime < PENDING_WINDOW_S
+    except OSError:
+        return False
+
+
 def _acquire_lock() -> bool:
     if LOCK_PATH.exists() and time.time() - LOCK_PATH.stat().st_mtime < 6 * 3600:
         return False
@@ -258,12 +269,20 @@ def sync(limit: int | None = None, set_active: bool = False, notify_user: bool =
     _save_state(state)
 
     # 2. New / changed PDFs -> ingest
+    # Zotero imports a PDF under its original name and renames it a few seconds later
+    # (after metadata retrieval). A file that vanished from a recently changed
+    # attachment folder is "pending": skipped now, not recorded, retried next sync.
+    pending = 0
     todo = []
     for key, it in items.items():
         p = Path(it["path"])
-        if not p.exists():
+        try:
+            st = p.stat()
+        except FileNotFoundError:
+            if _recently_changed(p.parent):
+                pending += 1
+                log.info("PENDING %s (attachment changing in Zotero); will retry", p.name)
             continue
-        st = p.stat()
         prev = state.get(key)
         if prev and prev["size"] == st.st_size and abs(prev["mtime"] - st.st_mtime) < 2:
             continue
@@ -280,9 +299,14 @@ def sync(limit: int | None = None, set_active: bool = False, notify_user: bool =
             "abstract": it["abstract"], "venue": None, "doi": None,
         }
         ingest_mod.extract_metadata = lambda _doc, _m=meta: _m  # skip network lookups
-        res = ingest_mod.ingest_pdf(
-            Path(it["path"]), tags=it["tags"], force=bool(prev and prev.get("paper_id"))
-        )
+        try:
+            res = ingest_mod.ingest_pdf(
+                Path(it["path"]), tags=it["tags"], force=bool(prev and prev.get("paper_id"))
+            )
+        except FileNotFoundError:
+            pending += 1
+            log.info("PENDING %s (renamed or moved by Zotero during sync); will retry", Path(it["path"]).name)
+            continue
         if res.success or (res.error or "").startswith("Already indexed"):
             state[key] = {"paper_id": res.paper_id, "size": st.st_size, "mtime": st.st_mtime}
             ok += 1
@@ -314,8 +338,11 @@ def sync(limit: int | None = None, set_active: bool = False, notify_user: bool =
             refreshed += 1
     _save_state(state)
     n_failed_total = sum(1 for s in state.values() if s.get("failed"))
-    log.info("Done. indexed=%d failed=%d metadata_refreshed=%d total=%d (of which unreadable: %d)",
-             ok, failed, refreshed, len(state), n_failed_total)
+    log.info("Done. indexed=%d failed=%d pending=%d metadata_refreshed=%d total=%d (of which unreadable: %d)",
+             ok, failed, pending, refreshed, len(state), n_failed_total)
+    if pending:
+        # Machine-readable marker: Open Scriptorium schedules a follow-up sync.
+        log.info("RETRY_PENDING %d", pending)
 
     if notify_user and (new_titles or failed):
         head = f"{len(new_titles)} new paper{'s' if len(new_titles) != 1 else ''} indexed"

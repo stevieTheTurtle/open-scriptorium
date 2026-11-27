@@ -2,6 +2,11 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.6] - 2026-11-27
+
+### Fixed
+- **Zotero sync no longer crashes when Zotero renames a freshly imported PDF mid-sync.** Zotero imports a PDF under its original name and renames it seconds later after retrieving metadata; a sync started by the storage watcher could hit the old name, raise `FileNotFoundError`, and stop, leaving the remaining new papers unindexed. `zotero_sync.py` now skips such attachments as *pending* (not recorded, so they are retried) and reports `RETRY_PENDING <n>`; Open Scriptorium then re-syncs after 20 s (up to 3 times in a row) so every new paper is picked up without waiting for the next library change.
+
 ## [0.5.5] - 2026-11-27
 
 ### Added
