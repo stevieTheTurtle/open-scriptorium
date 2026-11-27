@@ -2,7 +2,7 @@
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
   "description": "FOSS academic research & writing studio uniting AI agents, Zotero, and a bundled local LaTeX studio for VS Code & Antigravity.",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "publisher": "stevieTheTurtle",
   "author": {
     "name": "Stefano Calzolari",
@@ -25,17 +25,14 @@
   },
   "homepage": "https://github.com/stevieTheTurtle/open-scriptorium#readme",
   "keywords": [
-    "latex",
-    "tectonic",
-    "synctex",
-    "pdf",
+    "academic-writing",
+    "ai-agents",
     "zotero",
-    "bibtex",
+    "latex",
     "citations",
-    "research-assistant",
-    "mcp",
-    "rag",
-    "antigravity"
+    "tectonic",
+    "antigravity",
+    "mcp"
   ],
   "engines": {
     "vscode": "^1.99.0"

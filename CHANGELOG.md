@@ -2,6 +2,13 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.4.2] - 2026-11-27
+
+### Changed
+- Simplified `README.md`, hero banner, and diagrams to keep the landing page clean and focused, moving detailed reference tables and developer docs to `docs/REFERENCE.md` and `docs/DEVELOPMENT.md`.
+- Aligned VS Code Marketplace, Open VSX, and GitHub descriptions and keywords around Open Scriptorium's core identity as a FOSS academic writing studio for AI agents, Zotero, and local LaTeX.
+- Established `dev` / `dev/<feature>` branching workflow with CI checks while reserving `main` for releases.
+
 ## [0.4.1] - 2026-11-27
 
 ### Added

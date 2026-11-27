@@ -12,7 +12,7 @@ See **[SETUP.md](../SETUP.md)** for full runtime directory layout (`~/.open-scri
 
 ## Branching Workflow
 
-- **`main`** — Publishing and release branch only. Releases are cut from `main` via version tags (`vX.Y.Z`).
+- **`main`** — Publishing and release branch only. Merging `dev` into `main` and pushing a matching version tag (`vX.Y.Z`) triggers `.github/workflows/release.yml`, automatically syncing the `.vsix`, `README.md`, banner, `CHANGELOG.md`, and `package.json` metadata to both the VS Code Marketplace and Open VSX Registry.
 - **`dev`** — Default integration branch for ongoing development, improvements, and bug fixes.
 - **`dev/<feature>`** — Feature branches created off `dev` (e.g. `dev/citation_export`) for complete new features, merged back into `dev` when ready.
 
