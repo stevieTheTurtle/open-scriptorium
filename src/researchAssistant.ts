@@ -11,6 +11,7 @@ import * as path from 'node:path';
 import { findOnPath } from './compile.ts';
 import type { FindSupportResponse } from './citationFinder.ts';
 import { CONFIG_SECTION } from './project.ts';
+import { ZoteroWatcher } from './zoteroWatcher.ts';
 import {
   antigravityPluginDir,
   buildMcpLaunchSpec,
@@ -192,6 +193,7 @@ export class ResearchAssistantService implements vscode.Disposable {
   private daemonStarting: Promise<{ ok: boolean; error?: string }> | null = null;
   private syncRunning: Promise<boolean> | undefined;
   private syncTimer: NodeJS.Timeout | undefined;
+  private zoteroWatcher: ZoteroWatcher | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   readonly onDidSyncZotero = this.syncedEmitter.event;
@@ -229,6 +231,7 @@ export class ResearchAssistantService implements vscode.Disposable {
 
   dispose(): void {
     if (this.syncTimer) clearInterval(this.syncTimer);
+    this.zoteroWatcher?.stop();
     if (this.webUiProcess && !this.webUiProcess.killed) {
       this.webUiProcess.kill();
       this.webUiProcess = null;
@@ -258,6 +261,7 @@ export class ResearchAssistantService implements vscode.Disposable {
       collection: cfg.get<string>('researchAssistant.collection', 'Zotero'),
       zoteroDir: cfg.get<string>('researchAssistant.zoteroDir', ''),
       zoteroSyncIntervalMinutes: cfg.get<number>('researchAssistant.zoteroSyncIntervalMinutes', 0),
+      zoteroWatch: cfg.get<boolean>('researchAssistant.zoteroWatch', true),
       webUiPort: cfg.get<number>('researchAssistant.webUiPort', 8000),
       mcpFallback: cfg.get<boolean>('researchAssistant.mcpFallback', false),
       autoStartDaemon: cfg.get<boolean>('researchAssistant.autoStartDaemon', true),
@@ -373,11 +377,27 @@ export class ResearchAssistantService implements vscode.Disposable {
       clearInterval(this.syncTimer);
       this.syncTimer = undefined;
     }
+    this.zoteroWatcher?.stop();
+    this.zoteroWatcher = undefined;
     const settings = this.getSettings();
-    const minutes = settings.zoteroSyncIntervalMinutes;
-    if (!settings.enabled || !Number.isFinite(minutes) || minutes <= 0) return;
+    if (!settings.enabled) return;
     const paths = this.getPaths();
     if (!paths.zoteroDir || !fs.existsSync(paths.venvPython)) return;
+
+    // Near-instant pickup of newly added PDFs: 1 s stat poll on Zotero's storage/ folder.
+    if (settings.zoteroWatch !== false) {
+      this.zoteroWatcher = new ZoteroWatcher({
+        zoteroDir: paths.zoteroDir,
+        onChange: () => {
+          this.output.appendLine('\n[watch] New attachments detected in Zotero storage; syncing…');
+          return this.syncZotero(true);
+        },
+      });
+      this.zoteroWatcher.start();
+    }
+
+    const minutes = settings.zoteroSyncIntervalMinutes;
+    if (!Number.isFinite(minutes) || minutes <= 0) return;
     const intervalMs = Math.max(5, minutes) * 60 * 1000;
     this.syncTimer = setInterval(() => {
       void this.syncZotero(true);
@@ -1094,7 +1114,7 @@ export class ResearchAssistantService implements vscode.Disposable {
     const templates = this.readAgentTemplates(this.getPaths());
     const res = installWorkspaceAgentFiles(folder.uri.fsPath, templates);
     void vscode.window.showInformationMessage(
-      `Installed citation-evidence skill and rules in ${path.relative(folder.uri.fsPath, path.dirname(path.dirname(res.skillPath)))}`,
+      `Installed citation-evidence skill in ${path.relative(folder.uri.fsPath, path.dirname(path.dirname(res.skillPath)))} and project rules in AGENTS.md (imported by CLAUDE.md).`,
     );
   }
 

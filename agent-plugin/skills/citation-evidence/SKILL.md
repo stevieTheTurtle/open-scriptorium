@@ -1,12 +1,14 @@
 ---
 name: citation-evidence
 description: >-
-  Search the local Research Assistant paper library via the low-token `ra` CLI
-  (with optional MCP fallback) and maintain verbatim citation evidence notes in
-  references.notes.json whenever adding or verifying LaTeX citations (\cite,
-  \citep, \citet). Use whenever writing or editing LaTeX prose with citations,
-  answering literature questions from the user's library, or auditing unverified
-  (yellow/red) citations in Open Scriptorium.
+  Required whenever a .tex or .bib file gains, changes or is checked for a
+  citation (\cite, \citep, \citet, \citealp, ...): every new citation must be
+  backed by a verbatim quote from the user's local paper library, recorded in
+  references.notes.json in the same edit. Searches that library with the
+  low-token `ra` CLI (optional MCP fallback). Also use to answer literature
+  questions from the user's papers, to look up BibTeX entries, or to audit
+  unverified (yellow/red) citations in Open Scriptorium. Never invent quotes or
+  BibTeX fields; query arXiv only when asked.
 ---
 
 # Citation Evidence & Research Assistant Workflow (CLI-First)

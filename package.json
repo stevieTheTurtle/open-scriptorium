@@ -2,7 +2,7 @@
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
   "description": "FOSS academic research & writing studio uniting AI agents, Zotero, and a bundled local LaTeX studio for VS Code & Antigravity.",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "publisher": "stevieTheTurtle",
   "author": {
     "name": "Stefano Calzolari",
@@ -243,24 +243,72 @@
     ],
     "menus": {
       "openScriptorium.insertMenu": [
-        { "command": "openScriptorium.insert.bold", "group": "1_text@1" },
-        { "command": "openScriptorium.insert.italic", "group": "1_text@2" },
-        { "command": "openScriptorium.insert.math", "group": "1_text@3" },
-        { "command": "openScriptorium.insert.cite", "group": "2_refs@1" },
-        { "command": "openScriptorium.insert.ref", "group": "2_refs@2" },
-        { "command": "openScriptorium.insert.figure", "group": "3_blocks@1" },
-        { "command": "openScriptorium.insert.table", "group": "3_blocks@2" },
-        { "command": "openScriptorium.insert.itemize", "group": "3_blocks@3" }
+        {
+          "command": "openScriptorium.insert.bold",
+          "group": "1_text@1"
+        },
+        {
+          "command": "openScriptorium.insert.italic",
+          "group": "1_text@2"
+        },
+        {
+          "command": "openScriptorium.insert.math",
+          "group": "1_text@3"
+        },
+        {
+          "command": "openScriptorium.insert.cite",
+          "group": "2_refs@1"
+        },
+        {
+          "command": "openScriptorium.insert.ref",
+          "group": "2_refs@2"
+        },
+        {
+          "command": "openScriptorium.insert.figure",
+          "group": "3_blocks@1"
+        },
+        {
+          "command": "openScriptorium.insert.table",
+          "group": "3_blocks@2"
+        },
+        {
+          "command": "openScriptorium.insert.itemize",
+          "group": "3_blocks@3"
+        }
       ],
       "openScriptorium.researchMenu": [
-        { "command": "openScriptorium.researchAssistant.status", "group": "1_status@1" },
-        { "command": "openScriptorium.findSupportingCitation", "group": "2_actions@0" },
-        { "command": "openScriptorium.researchAssistant.syncZotero", "group": "2_actions@1" },
-        { "command": "openScriptorium.refreshCitationStatus", "group": "2_actions@2" },
-        { "command": "openScriptorium.researchAssistant.openWebUi", "group": "2_actions@3" },
-        { "command": "openScriptorium.researchAssistant.setup", "group": "3_setup@1" },
-        { "command": "openScriptorium.researchAssistant.registerClients", "group": "3_setup@2" },
-        { "command": "openScriptorium.researchAssistant.installWorkspaceSkill", "group": "3_setup@3" }
+        {
+          "command": "openScriptorium.researchAssistant.status",
+          "group": "1_status@1"
+        },
+        {
+          "command": "openScriptorium.findSupportingCitation",
+          "group": "2_actions@0"
+        },
+        {
+          "command": "openScriptorium.researchAssistant.syncZotero",
+          "group": "2_actions@1"
+        },
+        {
+          "command": "openScriptorium.refreshCitationStatus",
+          "group": "2_actions@2"
+        },
+        {
+          "command": "openScriptorium.researchAssistant.openWebUi",
+          "group": "2_actions@3"
+        },
+        {
+          "command": "openScriptorium.researchAssistant.setup",
+          "group": "3_setup@1"
+        },
+        {
+          "command": "openScriptorium.researchAssistant.registerClients",
+          "group": "3_setup@2"
+        },
+        {
+          "command": "openScriptorium.researchAssistant.installWorkspaceSkill",
+          "group": "3_setup@3"
+        }
       ],
       "editor/context": [
         {
@@ -478,6 +526,12 @@
           "scope": "window",
           "markdownDescription": "If greater than 0, automatically runs incremental Zotero sync in the background every N minutes (e.g. `30`)."
         },
+        "openScriptorium.researchAssistant.zoteroWatch": {
+          "type": "boolean",
+          "default": true,
+          "scope": "window",
+          "markdownDescription": "Watch Zotero's `storage/` folder (a 1 s file-time check, no Zotero plugin needed) and sync as soon as new PDFs are added. Metadata-only edits (tags, titles) are picked up by the periodic sync."
+        },
         "openScriptorium.researchAssistant.webUiPort": {
           "type": "number",
           "default": 8000,
@@ -511,7 +565,7 @@
     "build": "node build.mjs",
     "build:modern": "node build.mjs modern",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/tectonicInstaller.test.ts test/unit/latex.test.ts test/unit/citations.test.ts test/unit/citationFinder.test.ts test/unit/researchAssistant.test.ts",
+    "test": "node --test --disable-warning=ExperimentalWarning test/unit/parsers.test.ts test/unit/compile.test.ts test/unit/tectonicInstaller.test.ts test/unit/latex.test.ts test/unit/citations.test.ts test/unit/citationFinder.test.ts test/unit/researchAssistant.test.ts test/unit/zoteroWatcher.test.ts",
     "package": "npm run build && npx --yes @vscode/vsce package --no-dependencies",
     "publish:vscode": "npx --yes @vscode/vsce publish --no-dependencies",
     "publish:ovsx": "npx --yes ovsx publish --no-dependencies"

@@ -2,6 +2,15 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.5] - 2026-11-27
+
+### Added
+- **Instant Zotero pickup** (`openScriptorium.researchAssistant.zoteroWatch`, default on): a 1 s file-time check on Zotero's `storage/` folder triggers an incremental sync a few seconds after new PDFs are added. No database reads, no Python and no Zotero plugin while idle; changes that arrive during a sync trigger a follow-up sync. Metadata-only edits are still handled by the periodic sync.
+- **Install Citation Rules in Workspace** now also writes the always-on citation rules into the root `AGENTS.md` (marked block, rest of the file preserved) and adds an `@AGENTS.md` import to the root `CLAUDE.md`, so Codex, Cursor, Copilot, Gemini and Claude Code all follow the same project-scoped rules.
+
+### Changed
+- Sharpened the `citation-evidence` skill description (Agent Skills format) so agents load it whenever a `.tex`/`.bib` citation is added, changed or checked, and so the evidence rule travels with the skill itself.
+
 ## [0.5.4] - 2026-11-27
 
 ### Fixed

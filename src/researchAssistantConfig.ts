@@ -20,6 +20,7 @@ export interface ResearchAssistantSettings {
   collection: string;
   zoteroDir: string;
   zoteroSyncIntervalMinutes: number;
+  zoteroWatch?: boolean;
   webUiPort: number;
   mcpFallback: boolean;
   autoStartDaemon: boolean;
@@ -457,6 +458,24 @@ export function registerClaudeCode(
   return { claudeJsonPath, skillPath };
 }
 
+export const AGENTS_RULES_BEGIN = '<!-- open-scriptorium:citation-rules:begin (managed by Open Scriptorium; edits inside are overwritten) -->';
+export const AGENTS_RULES_END = '<!-- open-scriptorium:citation-rules:end -->';
+
+/** Creates `filePath` with a marked block, or replaces/appends that block while preserving everything else. */
+function upsertMarkedBlock(filePath: string, content: string): void {
+  const block = `${AGENTS_RULES_BEGIN}\n${content.trim()}\n${AGENTS_RULES_END}`;
+  const current = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const begin = current.indexOf(AGENTS_RULES_BEGIN);
+  const end = current.indexOf(AGENTS_RULES_END);
+  const next =
+    begin !== -1 && end > begin
+      ? current.slice(0, begin) + block + current.slice(end + AGENTS_RULES_END.length)
+      : current.trim()
+        ? `${current.trimEnd()}\n\n${block}\n`
+        : `${block}\n`;
+  if (next !== current) fs.writeFileSync(filePath, next, 'utf8');
+}
+
 /**
  * Registers or removes the Research Assistant MCP server in VS Code's user mcp.json (preserving all other keys).
  */
@@ -497,18 +516,34 @@ export function registerVsCodeUserMcp(
   return mcpPath;
 }
 
-/** Installs the citation-evidence skill and rules into a workspace's .agents/ directory. */
+/**
+ * Installs the citation-evidence skill and always-on rules into a workspace, using open cross-agent
+ * conventions and scoped to this project only:
+ * - `.agents/skills/citation-evidence/SKILL.md` (Agent Skills format) and `.agents/rules/citation-evidence.md`;
+ * - a marked rules block in the root `AGENTS.md` (read by Codex, Cursor, Copilot, Gemini, …), preserving other content;
+ * - a root `CLAUDE.md` that imports it via `@AGENTS.md` (Claude Code reads CLAUDE.md, not AGENTS.md).
+ */
 export function installWorkspaceAgentFiles(
   workspaceRoot: string,
   templates: { skillMd: string; agentsMd: string },
-): { skillPath: string; rulePath: string } {
+): { skillPath: string; rulePath: string; agentsMdPath: string; claudeMdPath: string } {
   const skillPath = path.join(workspaceRoot, '.agents', 'skills', CITATION_SKILL_DIR_NAME, 'SKILL.md');
   const rulePath = path.join(workspaceRoot, '.agents', 'rules', 'citation-evidence.md');
   fs.mkdirSync(path.dirname(skillPath), { recursive: true });
   fs.mkdirSync(path.dirname(rulePath), { recursive: true });
   fs.writeFileSync(skillPath, templates.skillMd, 'utf8');
   fs.writeFileSync(rulePath, templates.agentsMd, 'utf8');
-  return { skillPath, rulePath };
+
+  const agentsMdPath = path.join(workspaceRoot, 'AGENTS.md');
+  upsertMarkedBlock(agentsMdPath, templates.agentsMd);
+
+  const claudeMdPath = path.join(workspaceRoot, 'CLAUDE.md');
+  const claudeCurrent = fs.existsSync(claudeMdPath) ? fs.readFileSync(claudeMdPath, 'utf8') : '';
+  if (!/^@AGENTS\.md\s*$/m.test(claudeCurrent)) {
+    const next = claudeCurrent.trim() ? `${claudeCurrent.trimEnd()}\n\n@AGENTS.md\n` : '@AGENTS.md\n';
+    fs.writeFileSync(claudeMdPath, next, 'utf8');
+  }
+  return { skillPath, rulePath, agentsMdPath, claudeMdPath };
 }
 
 /** Checks which AI clients currently have Research Assistant skills/plugins and optional MCP registered. */

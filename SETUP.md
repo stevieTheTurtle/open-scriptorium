@@ -133,7 +133,7 @@ Inside **VS Code** or **Antigravity IDE**:
 - `Open Scriptorium: Research Assistant: Sync Zotero Library` — incremental sync of new/updated Zotero PDFs + refreshes PDF citation highlights
 - `Open Scriptorium: Research Assistant: Open Web UI` — launches and opens `http://127.0.0.1:8000`
 - `Open Scriptorium: Research Assistant: Register MCP & Skills` — re-writes MCP & skill configs without touching `.venv`
-- `Open Scriptorium: Research Assistant: Install Citation Rules in Workspace` — copies `.agents/skills/citation-evidence/SKILL.md` and `.agents/rules/citation-evidence.md` into the current repo
+- `Open Scriptorium: Research Assistant: Install Citation Rules in Workspace` — copies `.agents/skills/citation-evidence/SKILL.md` and `.agents/rules/citation-evidence.md` into the current repo, adds the always-on citation rules as a marked block in the root `AGENTS.md` (read by Codex, Cursor, Copilot, Gemini, …; the rest of the file is preserved), and adds an `@AGENTS.md` import to the root `CLAUDE.md` so Claude Code reads the same rules. Rules stay project-scoped: Open Scriptorium never writes global agent instruction files.
 - `Open Scriptorium: Refresh Citation Status` — manually re-checks `.bib` entries against `metadata.db`
 
 ---
@@ -351,7 +351,8 @@ In User `settings.json`, set:
   RA_DATA_DIR="<DATA_DIR>" RA_CONFIG_PATH="<INSTALL_DIR>/config.yaml" PYTHONPATH="<INSTALL_DIR>" \
     "<VENV_PYTHON>" "<INSTALL_DIR>/scripts/zotero_sync.py" --zotero-dir "<ZOTERO_DIR>" --set-active
   ```
-- Run automatically: set `"openScriptorium.researchAssistant.zoteroSyncIntervalMinutes": 30` in VS Code / Antigravity settings (or schedule `ra-zotero-sync.bat` / `ra-zotero-sync` in Windows Task Scheduler / `cron` if you want sync even when the editor is closed).
+- **Instant pickup of new papers (default on)**: while the editor is open, Open Scriptorium checks the modified time of Zotero's `storage/` folder once per second (a single file-time read: no database access, no Zotero plugin). Every imported PDF gets its own new `storage/<KEY>/` folder, so when that time changes and then stays quiet for 3 s, an incremental sync runs and the new paper is searchable with `ra` within seconds. Disable with `"openScriptorium.researchAssistant.zoteroWatch": false`.
+- Metadata-only edits (tags, titles, collections), linked-file attachments outside `storage/`, and items moved to the Zotero trash don't touch `storage/`; they are picked up by the periodic sync: set `"openScriptorium.researchAssistant.zoteroSyncIntervalMinutes": 30` in VS Code / Antigravity settings (or schedule `ra-zotero-sync.bat` / `ra-zotero-sync` in Windows Task Scheduler / `cron` if you want sync even when the editor is closed).
 
 ### How Citation Evidence & Verification Works in the PDF Viewer
 

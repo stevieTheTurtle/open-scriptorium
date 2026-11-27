@@ -70,6 +70,7 @@ Select any claim in a `.tex` file or the PDF preview and trigger **Find Supporti
 | `openScriptorium.researchAssistant.zoteroDir` | *(empty)* | Zotero folder containing `zotero.sqlite` (auto-detected if empty) |
 | `openScriptorium.researchAssistant.collection` | `Zotero` | Collection name used for citation verification and Zotero sync |
 | `openScriptorium.researchAssistant.zoteroSyncIntervalMinutes` | `0` | Periodic background Zotero sync interval in minutes (`0` = manual) |
+| `openScriptorium.researchAssistant.zoteroWatch` | `true` | Check Zotero's `storage/` folder every second and sync within seconds when new PDFs are added (no Zotero plugin needed) |
 | `openScriptorium.researchAssistant.webUiPort` | `8000` | Local port for the Research Assistant Web UI and warm CLI daemon |
 | `openScriptorium.researchAssistant.autoStartDaemon` | `true` | Keep the local HTTP service warm for ~50 ms `ra` CLI searches |
 | `openScriptorium.researchAssistant.mcpFallback` | `false` | Also register the stdio FastMCP server for clients without shell access |

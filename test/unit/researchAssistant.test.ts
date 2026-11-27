@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { test } from 'node:test';
 import {
   ANTIGRAVITY_PLUGIN_DIR_NAME,
+  AGENTS_RULES_BEGIN,
   RESEARCH_ASSISTANT_SERVER_NAME,
   antigravityPluginDir,
   buildMcpLaunchSpec,
@@ -195,6 +196,34 @@ test('syncBundledSource copies python source, skips __pycache__, and preserves .
     fs.writeFileSync(path.join(src, 'mcp_server', 'server.py'), 'print("v2")');
     assert.equal(syncBundledSource(src, dst, '0.2.0'), true);
     assert.equal(fs.readFileSync(path.join(dst, 'mcp_server', 'server.py'), 'utf8'), 'print("v2")');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('installWorkspaceAgentFiles writes AGENTS.md rules block and CLAUDE.md import, idempotently and preserving user content', () => {
+  const root = makeTempDir('ols-ws-rules-');
+  try {
+    // Fresh workspace: both files created.
+    let res = installWorkspaceAgentFiles(root, { skillMd: '# S', agentsMd: '# Rules\n\n1. Cite with evidence.\n' });
+    let agents = fs.readFileSync(res.agentsMdPath, 'utf8');
+    assert.ok(agents.startsWith(AGENTS_RULES_BEGIN));
+    assert.ok(agents.includes('1. Cite with evidence.'));
+    assert.equal(fs.readFileSync(res.claudeMdPath, 'utf8'), '@AGENTS.md\n');
+
+    // Existing user files: content preserved, block replaced in place, import not duplicated.
+    fs.writeFileSync(res.agentsMdPath, `# Project\n\n${agents}\n# Footer\n`, 'utf8');
+    fs.writeFileSync(res.claudeMdPath, '# My Claude notes\n', 'utf8');
+    installWorkspaceAgentFiles(root, { skillMd: '# S', agentsMd: '# Rules\n\n1. Cite with evidence v2.\n' });
+    res = installWorkspaceAgentFiles(root, { skillMd: '# S', agentsMd: '# Rules\n\n1. Cite with evidence v2.\n' });
+    agents = fs.readFileSync(res.agentsMdPath, 'utf8');
+    assert.ok(agents.startsWith('# Project'));
+    assert.ok(agents.includes('# Footer'));
+    assert.ok(agents.includes('v2.'));
+    assert.equal(agents.split(AGENTS_RULES_BEGIN).length, 2);
+    const claude = fs.readFileSync(res.claudeMdPath, 'utf8');
+    assert.ok(claude.startsWith('# My Claude notes'));
+    assert.equal(claude.split('@AGENTS.md').length, 2);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
