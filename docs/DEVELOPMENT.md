@@ -10,6 +10,14 @@ See **[SETUP.md](../SETUP.md)** for full runtime directory layout (`~/.open-scri
 
 ---
 
+## Branching Workflow
+
+- **`main`** — Publishing and release branch only. Releases are cut from `main` via version tags (`vX.Y.Z`).
+- **`dev`** — Default integration branch for ongoing development, improvements, and bug fixes.
+- **`dev/<feature>`** — Feature branches created off `dev` (e.g. `dev/citation_export`) for complete new features, merged back into `dev` when ready.
+
+---
+
 ## Building & Testing
 
 Requires **Node.js LTS (≥ 20)** and **Python 3.10+**.
