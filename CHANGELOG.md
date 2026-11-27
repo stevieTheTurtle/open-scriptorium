@@ -2,6 +2,14 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.0] - 2026-11-27
+
+### Added
+- **Agent-parametrizable search & pushdown filters** across `ra search`, `ra find-support`, the warm HTTP API (`/api/search`, `/api/search/context`, `/api/citations/find-support`), and the MCP server (`search_papers`, `find_supporting_citations`): filter by `--citekey`/`--key`, `--paper-id` (full ID or prefix), `--tag` (including Zotero `coll:` folder prefixes matching nested subcollections), `--author`, `--year`, `--year-from`, and `--year-to`.
+- **Configurable retrieval controls**: choose `--mode hybrid|semantic|bm25`, override `--semantic-weight`, `--bm25-weight`, `--rrf-k`, and `--recall-k`, and enable opt-in local Cross-Encoder reranking (`--rerank`, `--reranker-model`) directly on `ra search`.
+- **Verbatim page/chunk reader**: new `ra chunks <paper_id|@citekey> [--page N | --page-from N --page-to M]` command, `GET /api/papers/{id}/chunks` endpoint, and `get_paper_chunks` MCP tool; `ra detail` now also resolves `@citekey` and 6+ char ID prefixes.
+- **Pushdown filter execution & capability negotiation**: filters are pushed directly into SQLite FTS5 (`IN` / temp-table joins) and ChromaDB (`where` clauses with safe `n_results` clamping) so narrow/single-paper searches never starve, and `/api/health` advertises capabilities (`search_filters_v1`, `paper_chunks_v1`) so the CLI safely falls back to in-process execution against older running daemons.
+
 ## [0.4.2] - 2026-11-27
 
 ### Changed
