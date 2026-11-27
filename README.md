@@ -6,7 +6,7 @@
   <a href="https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium"><img src="https://img.shields.io/visual-studio-marketplace/v/stevieTheTurtle.open-scriptorium?label=VS%20Code&color=2B4666" alt="VS Code Marketplace" /></a>
   <a href="https://open-vsx.org/extension/stevieTheTurtle/open-scriptorium"><img src="https://img.shields.io/open-vsx/v/stevieTheTurtle/open-scriptorium?label=Open%20VSX&color=2E5A44" alt="Open VSX" /></a>
   <a href="https://github.com/stevieTheTurtle/open-scriptorium/releases/latest"><img src="https://img.shields.io/github/v/release/stevieTheTurtle/open-scriptorium?label=Release&color=8B2635" alt="Latest Release" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/stevieTheTurtle/open-scriptorium?color=9A6B1E" alt="MIT License" /></a>
+  <a href="https://github.com/stevieTheTurtle/open-scriptorium/blob/main/LICENSE"><img src="https://img.shields.io/github/license/stevieTheTurtle/open-scriptorium?color=9A6B1E" alt="MIT License" /></a>
 </p>
 
 <p align="center">
@@ -15,10 +15,10 @@
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick Start</a> ·
-  <a href="SETUP.md">Setup Guide</a> ·
-  <a href="docs/REFERENCE.md">Settings &amp; Shortcuts</a> ·
-  <a href="docs/DEVELOPMENT.md">Development</a>
+  <a href="https://github.com/stevieTheTurtle/open-scriptorium#quick-start">Quick Start</a> ·
+  <a href="https://github.com/stevieTheTurtle/open-scriptorium/blob/main/SETUP.md">Setup Guide</a> ·
+  <a href="https://github.com/stevieTheTurtle/open-scriptorium/blob/main/docs/REFERENCE.md">Settings &amp; Shortcuts</a> ·
+  <a href="https://github.com/stevieTheTurtle/open-scriptorium/blob/main/docs/DEVELOPMENT.md">Development</a>
 </p>
 
 ---

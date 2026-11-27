@@ -2,6 +2,11 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.3] - 2026-11-27
+
+### Fixed
+- Replaced relative HTML `<a href>` links in `README.md` (header navigation links and MIT license badge) with absolute GitHub URLs so every link works on VS Code Marketplace, Open VSX, and inside IDE Extension views (where `vsce` only rewrites Markdown-syntax links).
+
 ## [0.5.2] - 2026-11-27
 
 ### Changed
