@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 260" fill="none">
   <defs>
-    <linearGradient id="paper" x1="0" y1="0" x2="1200" y2="360" gradientUnits="userSpaceOnUse">
+    <linearGradient id="paper" x1="0" y1="0" x2="1200" y2="260" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#FCF9F2"/>
       <stop offset="100%" stop-color="#F3ECE0"/>
     </linearGradient>
@@ -31,20 +31,19 @@
     </linearGradient>
   </defs>
 
-  <!-- Archival parchment sheet with classical double engraved border -->
-  <rect width="1200" height="360" rx="14" fill="url(#paper)"/>
-  <rect x="10" y="10" width="1180" height="340" rx="9" stroke="#C5B89E" stroke-width="1.5"/>
-  <rect x="16" y="16" width="1168" height="328" rx="6" stroke="#DFD5C0" stroke-width="1"/>
+  <!-- Clean archival parchment plate with double hairline border -->
+  <rect width="1200" height="260" rx="14" fill="url(#paper)"/>
+  <rect x="10" y="10" width="1180" height="240" rx="9" stroke="#C5B89E" stroke-width="1.5"/>
+  <rect x="16" y="16" width="1168" height="228" rx="6" stroke="#DFD5C0" stroke-width="1"/>
 
-  <!-- Subtle classical corner diamonds -->
+  <!-- Corner diamonds -->
   <polygon points="28,28 33,23 38,28 33,33" fill="#B58938"/>
   <polygon points="1162,28 1167,23 1172,28 1167,33" fill="#B58938"/>
-  <polygon points="28,332 33,327 38,332 33,337" fill="#B58938"/>
-  <polygon points="1162,332 1167,327 1172,332 1167,337" fill="#B58938"/>
+  <polygon points="28,232 33,227 38,232 33,237" fill="#B58938"/>
+  <polygon points="1162,232 1167,227 1172,232 1167,237" fill="#B58938"/>
 
-  <!-- LEFT EDITORIAL COLUMN -->
-  <!-- Updated book-plate emblem -->
-  <g transform="translate(52, 54) scale(0.76)">
+  <!-- Optically centered hero lockup: Emblem + Title + Tagline -->
+  <g transform="translate(242, 62) scale(1.06)">
     <rect x="4" y="4" width="120" height="120" rx="22" fill="url(#cover)" stroke="#3B0E16" stroke-width="2"/>
     <rect x="11" y="11" width="106" height="106" rx="16" stroke="url(#gold)" stroke-width="1.6" stroke-opacity="0.85"/>
     <path d="M22 41 C38 35, 54 37, 64 43 C74 37, 90 35, 106 41 L106 95 C90 89, 74 91, 64 97 C54 91, 38 89, 22 95 Z" fill="#2B1418" fill-opacity="0.45" transform="translate(0, 4)"/>
@@ -93,97 +92,11 @@
     </g>
   </g>
 
-  <!-- Clean, highly legible Masthead -->
-  <text x="168" y="80" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.14em">FREE &amp; OPEN-SOURCE ACADEMIC WRITING STUDIO</text>
-  <text x="166" y="130" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="44" font-weight="700" letter-spacing="-0.02em">Open Scriptorium</text>
+  <!-- Bold masthead + crisp 1-line tagline -->
+  <text x="410" y="114" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="56" font-weight="700" letter-spacing="-0.025em">Open Scriptorium</text>
+  <text x="412" y="152" fill="#4A443A" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="400">FOSS academic writing studio for AI agents, Zotero &amp; LaTeX.</text>
 
-  <!-- Engraved rule -->
-  <line x1="56" y1="166" x2="588" y2="166" stroke="#C5B89E" stroke-width="1"/>
-  <polygon points="318,166 322,162 326,166 322,170" fill="#8B2635"/>
-
-  <text x="56" y="198" fill="#3D3830" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="15.5" font-weight="400">Local Tectonic typesetting, exact-word SyncTeX, and a bundled Zotero</text>
-  <text x="56" y="221" fill="#3D3830" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="15.5" font-weight="400">Research Assistant that grounds every citation in verbatim evidence.</text>
-
-  <!-- Clean flat specimen tags -->
-  <g transform="translate(56, 250)" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600">
-    <rect x="0" y="0" width="108" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
-    <rect x="0" y="0" width="4" height="30" rx="2" fill="#2B4666"/>
-    <text x="15" y="19.5" fill="#1C1917">Tectonic TeX</text>
-
-    <rect x="120" y="0" width="136" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
-    <rect x="120" y="0" width="4" height="30" rx="2" fill="#2E5A44"/>
-    <text x="135" y="19.5" fill="#1C1917">PDF.js + SyncTeX</text>
-
-    <rect x="268" y="0" width="130" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
-    <rect x="268" y="0" width="4" height="30" rx="2" fill="#8B2635"/>
-    <text x="283" y="19.5" fill="#1C1917">Zotero + MCP</text>
-
-    <rect x="410" y="0" width="122" height="30" rx="4" fill="#FFFFFF" stroke="#C5B89E"/>
-    <rect x="410" y="0" width="4" height="30" rx="2" fill="#9A6B1E"/>
-    <text x="425" y="19.5" fill="#1C1917">FOSS · MIT</text>
-  </g>
-  <text x="56" y="314" fill="#6F665A" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="12.5" font-weight="500">For VS Code · Antigravity IDE · Claude Code · Local &amp; Cloud-Synced Libraries</text>
-
-  <!-- RIGHT EDITORIAL WORKBENCH SPREAD (Open Folio + Marginalia) -->
-  <g transform="translate(626, 40)">
-    <!-- Subtle book shadow -->
-    <rect x="6" y="8" width="522" height="278" rx="8" fill="#1C1917" fill-opacity="0.08"/>
-    <!-- Outer folio frame -->
-    <rect x="0" y="0" width="522" height="278" rx="8" fill="#FFFFFF" stroke="#C5B89E" stroke-width="1.3"/>
-    <!-- Running header bar -->
-    <rect x="0" y="0" width="522" height="30" rx="8" fill="#F2EBD9"/>
-    <rect x="0" y="20" width="522" height="10" fill="#F2EBD9"/>
-    <line x1="0" y1="30" x2="522" y2="30" stroke="#D7CCB6" stroke-width="1"/>
-    <text x="16" y="19.5" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.08em">§  MANUSCRIPT SOURCE</text>
-    <text x="276" y="19.5" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.08em">TYPESET FOLIO &amp; MARGINALIA</text>
-    <!-- Center book gutter -->
-    <line x1="258" y1="0" x2="258" y2="278" stroke="#D7CCB6" stroke-width="1.2"/>
-
-    <!-- LEFT LEAF: LaTeX Source -->
-    <text x="18" y="54" fill="#8B2635" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="11" font-weight="700">\section{Introduction}</text>
-    <text x="18" y="75" fill="#5E5548" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="10">Modern sequence transduction</text>
-    <text x="18" y="91" fill="#5E5548" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="10">relies solely on attention</text>
-    <rect x="14" y="100" width="230" height="22" rx="3" fill="#EDF4EF" stroke="#2E5A44" stroke-opacity="0.45"/>
-    <text x="20" y="115" fill="#2E5A44" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="10" font-weight="700">mechanisms \cite{vaswani2017}.</text>
-    <text x="18" y="140" fill="#5E5548" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="10">Earlier studies of mind</text>
-    <text x="18" y="156" fill="#5E5548" font-family="'Cascadia Code', Consolas, 'Courier New', monospace" font-size="10">perception \cite{gray2007} ...</text>
-
-    <!-- Scholarly MCP callout on left bottom -->
-    <rect x="16" y="184" width="226" height="76" rx="5" fill="#FAF6EE" stroke="#C5B89E"/>
-    <rect x="16" y="184" width="226" height="20" rx="5" fill="#EDE4D0"/>
-    <rect x="16" y="198" width="226" height="6" fill="#EDE4D0"/>
-    <text x="25" y="197.5" fill="#2B4666" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9.5" font-weight="700" letter-spacing="0.06em">RESEARCH ASSISTANT · MCP</text>
-    <text x="25" y="220" fill="#1C1917" font-family="'Cascadia Code', Consolas, monospace" font-size="9.5">search_papers("self-attention")</text>
-    <text x="25" y="237" fill="#2E5A44" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="10" font-weight="600">→ @vaswani2017 matched (p. 2)</text>
-    <text x="25" y="252" fill="#6F665A" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9.5">Verbatim quote appended to notes</text>
-
-    <!-- RIGHT LEAF: Typeset Paper (Palatino classical book preview) + Citation Marginalia Card -->
-    <text x="274" y="54" fill="#1C1917" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="14" font-weight="700">1.  Introduction</text>
-    <text x="274" y="75" fill="#3D3830" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="11">Modern sequence transduction relies</text>
-    <text x="274" y="92" fill="#3D3830" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="11">solely on attention</text>
-    <!-- Sage Verified inline citation -->
-    <rect x="372" y="81" width="80" height="15" rx="2.5" fill="#EDF4EF" stroke="#2E5A44" stroke-width="0.9"/>
-    <text x="412" y="91.5" text-anchor="middle" fill="#2E5A44" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9" font-weight="700">[Vaswani 2017]</text>
-
-    <text x="274" y="111" fill="#3D3830" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="11">and agency models</text>
-    <!-- Ochre Second-hand inline citation -->
-    <rect x="372" y="100" width="66" height="15" rx="2.5" fill="#FBF4E4" stroke="#9A6B1E" stroke-width="0.9"/>
-    <text x="405" y="110.5" text-anchor="middle" fill="#9A6B1E" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9" font-weight="700">[Gray 2007]</text>
-    <!-- Crimson Unverified inline citation -->
-    <rect x="443" y="100" width="66" height="15" rx="2.5" fill="#F9ECEE" stroke="#8B2635" stroke-width="0.9"/>
-    <text x="476" y="110.5" text-anchor="middle" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9" font-weight="700">[Unverified]</text>
-
-    <!-- Engraved Archival Evidence Note Card -->
-    <rect x="274" y="130" width="232" height="130" rx="5" fill="#FCF9F2" stroke="#2E5A44" stroke-width="1.2"/>
-    <rect x="274" y="130" width="232" height="24" rx="5" fill="#EDF4EF"/>
-    <rect x="274" y="148" width="232" height="6" fill="#EDF4EF"/>
-    <line x1="274" y1="154" x2="506" y2="154" stroke="#C5D8CC" stroke-width="1"/>
-    <text x="284" y="145.5" fill="#2E5A44" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9.5" font-weight="700" letter-spacing="0.06em">✓  VERIFIED IN ZOTERO · P. 2</text>
-    <text x="284" y="172" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11" font-weight="700">Attention Is All You Need (2017)</text>
-    <text x="284" y="191" fill="#3D3830" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="10.8" font-style="italic">“The Transformer is the first</text>
-    <text x="284" y="206" fill="#3D3830" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="10.8" font-style="italic">transduction model relying entirely</text>
-    <text x="284" y="221" fill="#3D3830" font-family="'Palatino Linotype', 'Book Antiqua', 'Noto Serif', serif" font-size="10.8" font-style="italic">on self-attention.”</text>
-    <line x1="284" y1="233" x2="494" y2="233" stroke="#E2D9C5" stroke-width="1"/>
-    <text x="284" y="248" fill="#6F665A" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="9.2">Source: references.notes.json · SyncTeX matched</text>
-  </g>
+  <!-- Subtle rule + minimal pillars -->
+  <line x1="412" y1="175" x2="942" y2="175" stroke="#D3C6AE" stroke-width="1"/>
+  <text x="412" y="201" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="13" font-weight="700" letter-spacing="0.12em">AI AGENTS  ·  ZOTERO  ·  LOCAL LATEX  ·  MIT</text>
 </svg>

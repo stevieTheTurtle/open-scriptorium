@@ -1,7 +1,7 @@
 {
   "name": "open-scriptorium",
   "displayName": "Open Scriptorium",
-  "description": "FOSS LaTeX studio for VS Code & Antigravity: auto-installed Tectonic, SyncTeX PDF preview, bundled Research Assistant CLI & opt-in MCP, Zotero sync, and verbatim citation verification.",
+  "description": "FOSS academic research & writing studio uniting AI agents, Zotero, and a bundled local LaTeX studio for VS Code & Antigravity.",
   "version": "0.4.1",
   "publisher": "stevieTheTurtle",
   "author": {

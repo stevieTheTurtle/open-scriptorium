@@ -1,118 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 468" fill="none">
-  <defs>
-    <marker id="inkArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#4A443A"/>
-    </marker>
-    <marker id="sageArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#2E5A44"/>
-    </marker>
-    <marker id="crimsonArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#8B2635"/>
-    </marker>
-    <marker id="ochreArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M1 1.5 L8.5 5 L1 8.5 Z" fill="#9A6B1E"/>
-    </marker>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 300" fill="none">
+  <rect width="920" height="300" rx="12" fill="#FAF6EE"/>
+  <rect x="8" y="8" width="904" height="284" rx="8" stroke="#C5B89E" stroke-width="1.4"/>
 
-  <!-- Archival Plate Paper -->
-  <rect width="960" height="468" rx="12" fill="#FAF6EE"/>
-  <rect x="9" y="9" width="942" height="450" rx="8" stroke="#C5B89E" stroke-width="1.4"/>
-  <rect x="14" y="14" width="932" height="440" rx="5" stroke="#E2D9C5" stroke-width="1"/>
+  <text x="30" y="42" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="18" font-weight="700" letter-spacing="-0.015em">Architecture Overview</text>
+  <line x1="30" y1="54" x2="890" y2="54" stroke="#D5C9B2" stroke-width="1"/>
 
-  <!-- Monograph Figure Header -->
-  <text x="32" y="40" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" letter-spacing="0.14em">PLATE I — SYSTEM ARCHITECTURE</text>
-  <text x="32" y="64" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="20" font-weight="700" letter-spacing="-0.015em">Open Scriptorium &amp; Bundled Research Assistant</text>
-  <text x="32" y="83" fill="#5A5247" font-family="'Segoe UI', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="12.5" font-weight="400">Shipped inside a single .vsix package; .venv stays machine-local while data/ and Zotero may sync across PCs.</text>
-  <line x1="32" y1="95" x2="928" y2="95" stroke="#D5C9B2" stroke-width="1"/>
+  <!-- Column 1: Editor Extension -->
+  <rect x="30" y="76" width="244" height="192" rx="8" fill="#FFFFFF" stroke="#2B4666" stroke-width="1.3"/>
+  <rect x="30" y="76" width="244" height="34" rx="8" fill="#2B4666"/>
+  <rect x="30" y="100" width="244" height="10" fill="#2B4666"/>
+  <text x="46" y="97.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12" font-weight="700" letter-spacing="0.06em">EDITOR EXTENSION</text>
+  <text x="46" y="138" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="13" font-weight="600">Tectonic + PDF.js + SyncTeX</text>
+  <text x="46" y="164" fill="#5A5247" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12">• Compile, preview &amp; word jump</text>
+  <text x="46" y="188" fill="#5A5247" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12">• PDF citation tooltips &amp; flags</text>
+  <text x="46" y="212" fill="#5A5247" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12">• Claim-support finder (Ctrl+Alt+C)</text>
+  <text x="46" y="246" fill="#2B4666" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5" font-weight="600">VS Code · Antigravity IDE</text>
 
-  <!-- COLUMN 1: VS Code / Antigravity Extension -->
-  <rect x="30" y="112" width="268" height="324" rx="8" fill="#FFFFFF" stroke="#B7C4D4" stroke-width="1.3"/>
-  <rect x="30" y="112" width="268" height="34" rx="8" fill="#2B4666"/>
-  <rect x="30" y="136" width="268" height="10" fill="#2B4666"/>
-  <text x="44" y="133.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.08em">I.  EDITOR EXTENSION</text>
+  <!-- Column 2 Top: Research Assistant -->
+  <rect x="330" y="76" width="260" height="92" rx="8" fill="#FFFFFF" stroke="#2E5A44" stroke-width="1.3"/>
+  <rect x="330" y="76" width="260" height="32" rx="8" fill="#2E5A44"/>
+  <rect x="330" y="98" width="260" height="10" fill="#2E5A44"/>
+  <text x="346" y="96.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12" font-weight="700" letter-spacing="0.06em">RESEARCH ASSISTANT</text>
+  <text x="346" y="132" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="13" font-weight="600">ra CLI · Warm Daemon · Web UI</text>
+  <text x="346" y="153" fill="#5A5247" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.8">Hybrid search · Reranker · Opt-in MCP</text>
 
-  <rect x="44" y="158" width="240" height="54" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="56" y="179" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">LaTeX Workspace</text>
-  <text x="56" y="197" fill="#5E5548" font-family="'Cascadia Code', Consolas, monospace" font-size="10.5">.tex · .bib · references.notes.json</text>
+  <!-- Column 2 Bottom: Local Paper Index -->
+  <rect x="330" y="188" width="260" height="80" rx="8" fill="#FFFFFF" stroke="#9A6B1E" stroke-width="1.3"/>
+  <rect x="330" y="188" width="260" height="30" rx="8" fill="#9A6B1E"/>
+  <rect x="330" y="208" width="260" height="10" fill="#9A6B1E"/>
+  <text x="346" y="207.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.06em">LOCAL PAPER INDEX</text>
+  <text x="346" y="239" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="600">SQLite FTS5 + ChromaDB</text>
+  <text x="346" y="257" fill="#9A6B1E" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5">Local or cloud-synced across PCs</text>
 
-  <rect x="44" y="222" width="240" height="58" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="56" y="243" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">Tectonic + PDF.js + SyncTeX</text>
-  <text x="56" y="262" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="10.2">Compile on save · Two-way jump · Hover cards</text>
+  <!-- Column 3 Top: AI Clients -->
+  <rect x="646" y="76" width="244" height="92" rx="8" fill="#FFFFFF" stroke="#2B4666" stroke-width="1.3"/>
+  <rect x="646" y="76" width="244" height="32" rx="8" fill="#2B4666"/>
+  <rect x="646" y="98" width="244" height="10" fill="#2B4666"/>
+  <text x="662" y="96.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12" font-weight="700" letter-spacing="0.06em">AI AGENTS &amp; SKILLS</text>
+  <text x="662" y="132" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.8" font-weight="600">Antigravity · Claude · VS Code</text>
+  <text x="662" y="153" fill="#5A5247" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.8">citation-evidence skill + rules</text>
 
-  <rect x="44" y="290" width="240" height="60" rx="5" fill="#EDF4EF" stroke="#2E5A44" stroke-opacity="0.5"/>
-  <text x="56" y="310" fill="#2E5A44" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">Built-in Citation Bridge</text>
-  <text x="56" y="328" fill="#3D3830" font-family="'Cascadia Code', Consolas, monospace" font-size="10">citation_status.py (stdlib only)</text>
-  <text x="56" y="343" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="10.5">Verified / Second-hand / Unverified</text>
+  <!-- Column 3 Bottom: Zotero Library -->
+  <rect x="646" y="188" width="244" height="80" rx="8" fill="#FFFFFF" stroke="#8B2635" stroke-width="1.3"/>
+  <rect x="646" y="188" width="244" height="30" rx="8" fill="#8B2635"/>
+  <rect x="646" y="208" width="244" height="10" fill="#8B2635"/>
+  <text x="662" y="207.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.06em">ZOTERO LIBRARY</text>
+  <text x="662" y="239" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="600">Read-only SQLite + PDFs</text>
+  <text x="662" y="257" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5">Preserves Better BibTeX @citekeys</text>
 
-  <rect x="44" y="360" width="240" height="62" rx="5" fill="#FCF9F2" stroke="#2B4666" stroke-opacity="0.45"/>
-  <text x="56" y="381" fill="#2B4666" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">1-Click Multi-PC Setup</text>
-  <text x="56" y="399" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11">Creates local .venv · Links Zotero</text>
-  <text x="56" y="414" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11">Registers MCP + citation skill</text>
+  <!-- Clean connectors with explicit vector arrowheads -->
+  <!-- Editor -> Research Assistant -->
+  <line x1="274" y1="124" x2="320" y2="124" stroke="#4A443A" stroke-width="1.8"/>
+  <polygon points="328,124 319,119.5 319,128.5" fill="#4A443A"/>
 
-  <!-- COLUMN 2: Machine-Local Runtime + Shared Data -->
-  <rect x="342" y="112" width="286" height="196" rx="8" fill="#FFFFFF" stroke="#B4CCB9" stroke-width="1.3"/>
-  <rect x="342" y="112" width="286" height="34" rx="8" fill="#2E5A44"/>
-  <rect x="342" y="136" width="286" height="10" fill="#2E5A44"/>
-  <text x="356" y="133.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.08em">II.  LOCAL RUNTIME (.venv)</text>
+  <!-- Editor -> Local Paper Index (read-only dashed) -->
+  <line x1="274" y1="228" x2="320" y2="228" stroke="#9A6B1E" stroke-width="1.8" stroke-dasharray="5 3"/>
+  <polygon points="328,228 319,223.5 319,232.5" fill="#9A6B1E"/>
 
-  <rect x="356" y="158" width="124" height="58" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="368" y="180" fill="#2E5A44" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">MCP Server</text>
-  <text x="368" y="198" fill="#5E5548" font-family="'Cascadia Code', Consolas, monospace" font-size="10">stdio FastMCP</text>
+  <!-- Research Assistant -> Local Paper Index -->
+  <line x1="460" y1="168" x2="460" y2="179" stroke="#2E5A44" stroke-width="1.8"/>
+  <polygon points="460,187 455.5,178 464.5,178" fill="#2E5A44"/>
 
-  <rect x="490" y="158" width="124" height="58" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="502" y="180" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">Zotero Sync</text>
-  <text x="502" y="198" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11">Incremental PDFs</text>
+  <!-- Research Assistant -> AI Agents -->
+  <line x1="590" y1="124" x2="636" y2="124" stroke="#2E5A44" stroke-width="1.8"/>
+  <polygon points="644,124 635,119.5 635,128.5" fill="#2E5A44"/>
 
-  <rect x="356" y="226" width="258" height="68" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="368" y="247" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12.5" font-weight="700">Web UI (:8000) &amp; Typer CLI</text>
-  <text x="368" y="266" fill="#5E5548" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11">Hybrid BM25 + Vector Search · Upload PDFs</text>
-  <text x="368" y="283" fill="#6F665A" font-family="'Cascadia Code', Consolas, monospace" font-size="10">sentence-transformers / Ollama · arXiv</text>
-
-  <!-- Data Archive -->
-  <rect x="342" y="324" width="286" height="112" rx="8" fill="#FFFFFF" stroke="#D6BE8E" stroke-width="1.3"/>
-  <rect x="342" y="324" width="286" height="30" rx="8" fill="#9A6B1E"/>
-  <rect x="342" y="344" width="286" height="10" fill="#9A6B1E"/>
-  <text x="356" y="343" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11" font-weight="700" letter-spacing="0.08em">III.  PAPER ARCHIVE (RA_DATA_DIR)</text>
-  <text x="356" y="375" fill="#1C1917" font-family="'Cascadia Code', Consolas, monospace" font-size="10.5">• metadata.db (SQLite FTS5 + @citekeys)</text>
-  <text x="356" y="395" fill="#1C1917" font-family="'Cascadia Code', Consolas, monospace" font-size="10.5">• chroma/ (local semantic embeddings)</text>
-  <text x="356" y="419" fill="#9A6B1E" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11" font-weight="500">Local or cloud-synced across PCs (e.g. OneDrive)</text>
-
-  <!-- COLUMN 3: AI Clients & Zotero -->
-  <rect x="674" y="112" width="256" height="196" rx="8" fill="#FFFFFF" stroke="#B7C4D4" stroke-width="1.3"/>
-  <rect x="674" y="112" width="256" height="34" rx="8" fill="#2B4666"/>
-  <rect x="674" y="136" width="256" height="10" fill="#2B4666"/>
-  <text x="688" y="133.5" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11.5" font-weight="700" letter-spacing="0.08em">IV.  AI CLIENTS &amp; SKILLS</text>
-
-  <rect x="688" y="158" width="228" height="38" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="700" y="181" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12" font-weight="700">Antigravity IDE</text>
-  <text x="826" y="181" fill="#2E5A44" font-family="'Cascadia Code', Consolas, monospace" font-size="10">Plugin+MCP</text>
-
-  <rect x="688" y="205" width="228" height="38" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="700" y="228" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12" font-weight="700">Claude Code CLI</text>
-  <text x="826" y="228" fill="#2E5A44" font-family="'Cascadia Code', Consolas, monospace" font-size="10">MCP+Skill</text>
-
-  <rect x="688" y="252" width="228" height="38" rx="5" fill="#FCF9F2" stroke="#D9CEB8"/>
-  <text x="700" y="275" fill="#1C1917" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="12" font-weight="700">VS Code Copilot</text>
-  <text x="826" y="275" fill="#2E5A44" font-family="'Cascadia Code', Consolas, monospace" font-size="10">Provider</text>
-
-  <!-- Zotero Card -->
-  <rect x="674" y="324" width="256" height="112" rx="8" fill="#FFFFFF" stroke="#D4B0B6" stroke-width="1.3"/>
-  <rect x="674" y="324" width="256" height="30" rx="8" fill="#8B2635"/>
-  <rect x="674" y="344" width="256" height="10" fill="#8B2635"/>
-  <text x="688" y="343" fill="#FAF6EE" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11" font-weight="700" letter-spacing="0.08em">V.  ZOTERO LIBRARY</text>
-  <text x="688" y="375" fill="#1C1917" font-family="'Cascadia Code', Consolas, monospace" font-size="10.5">• zotero.sqlite (read-only copy)</text>
-  <text x="688" y="395" fill="#1C1917" font-family="'Cascadia Code', Consolas, monospace" font-size="10.5">• storage/ &amp; linked PDFs</text>
-  <text x="688" y="419" fill="#8B2635" font-family="'Segoe UI', 'Noto Sans', sans-serif" font-size="11" font-weight="500">Preserves Better BibTeX @citekeys</text>
-
-  <!-- Clean Ink Connectors -->
-  <!-- Citation Bridge -> Archive (read-only) -->
-  <path d="M284 320 C314 320, 314 378, 340 378" stroke="#9A6B1E" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#ochreArrow)"/>
-  <!-- Setup -> Runtime -->
-  <path d="M284 390 C316 390, 316 258, 340 258" stroke="#4A443A" stroke-width="1.8" marker-end="url(#inkArrow)"/>
-  <!-- Runtime <-> Archive -->
-  <path d="M485 308 L485 322" stroke="#2E5A44" stroke-width="1.8" marker-end="url(#sageArrow)"/>
-  <!-- MCP -> AI Clients (clean straight line above Zotero path) -->
-  <path d="M628 178 L672 178" stroke="#2E5A44" stroke-width="1.8" marker-end="url(#sageArrow)"/>
-  <!-- Zotero -> Zotero Sync (clean path entering bottom-right of runtime) -->
-  <path d="M674 372 C648 372, 648 214, 616 214" stroke="#8B2635" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#crimsonArrow)"/>
+  <!-- Zotero -> Research Assistant (read-only dashed curve) -->
+  <path d="M646 228 C616 228, 616 148, 600 148" stroke="#8B2635" stroke-width="1.8" stroke-dasharray="5 3"/>
+  <polygon points="592,148 601,143.5 601,152.5" fill="#8B2635"/>
 </svg>
