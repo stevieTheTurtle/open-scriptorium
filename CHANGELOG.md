@@ -2,6 +2,16 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.2] - 2026-11-27
+
+### Changed
+- Upgraded the default local CrossEncoder reranker (`openScriptorium.researchAssistant.rerankerModel`) from `cross-encoder/ms-marco-MiniLM-L-6-v2` to **`BAAI/bge-reranker-base`** for stronger academic claim-support and `ra search --rerank` accuracy.
+- Added animated loading feedback to the **Citation Finder — Zotero** panel: indeterminate progress bar, spinner, live elapsed timer, progressive stage hints (including first-run model download/warm-up guidance), pulsing skeleton cards, and a `Cancel` action.
+
+### Fixed
+- Fixed pair ordering for opt-in NLI CrossEncoder models (such as `cross-encoder/nli-deberta-v3-small`) in `core/claim_support.py` so they receive `(premise=passage, hypothesis=claim)` instead of `(claim, passage)`.
+- Increased the warm daemon HTTP timeout for `/api/citations/find-support` to 5 minutes so first-run CrossEncoder downloads complete reliably on slower connections.
+
 ## [0.5.1] - 2026-11-27
 
 ### Changed

@@ -113,7 +113,7 @@ export class CitationFinderPanel implements vscode.Disposable {
 
   private rerankerModel(): string {
     const cfg = vscode.workspace.getConfiguration(CONFIG_SECTION, this.project?.folder?.uri);
-    return cfg.get<string>('researchAssistant.rerankerModel', 'cross-encoder/ms-marco-MiniLM-L-6-v2');
+    return cfg.get<string>('researchAssistant.rerankerModel', 'BAAI/bge-reranker-base');
   }
 
   private async resolveNotesPath(): Promise<string | null> {
@@ -177,6 +177,7 @@ export class CitationFinderPanel implements vscode.Disposable {
       claim: this.cleanedClaim,
       citeCmd: this.citeCommand(),
       useReranker,
+      rerankerModel: this.rerankerModel(),
       anchor: this.anchor
         ? { file: this.anchor.relativeFile, line: this.anchor.line + 1, source: this.anchor.source }
         : null,
@@ -235,6 +236,11 @@ export class CitationFinderPanel implements vscode.Disposable {
         const claim = typeof msg.claim === 'string' ? msg.claim : '';
         const useReranker = msg.useReranker !== false;
         await this.runSearch(claim, useReranker);
+        break;
+      }
+      case 'cancelSearch': {
+        ++this.searchSeq;
+        void this.panel?.webview.postMessage({ type: 'cancelled' });
         break;
       }
       case 'runSetup':
@@ -521,6 +527,10 @@ export class CitationFinderPanel implements vscode.Disposable {
     font-size: 11.5px;
     color: var(--vscode-descriptionForeground);
   }
+  button:disabled {
+    opacity: 0.65;
+    cursor: default;
+  }
   .status-banner {
     margin-top: 12px;
     padding: 10px 12px;
@@ -532,6 +542,117 @@ export class CitationFinderPanel implements vscode.Disposable {
   .status-banner.error {
     border-color: rgba(239, 68, 68, 0.55);
     background: rgba(239, 68, 68, 0.12);
+  }
+  .loading-card {
+    position: relative;
+    overflow: hidden;
+    margin-top: 12px;
+    padding: 12px 12px 11px;
+    border-radius: 6px;
+    background: var(--vscode-editorWidget-background, rgba(128,128,128,0.12));
+    border: 1px solid var(--vscode-editorWidget-border, rgba(128,128,128,0.28));
+  }
+  .progress-track {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: rgba(128, 128, 128, 0.18);
+    overflow: hidden;
+  }
+  .progress-bar {
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 40%;
+    height: 100%;
+    background: var(--vscode-progressBar-background, #0e70c0);
+    animation: os-indeterminate 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  .loading-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .loading-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-weight: 500;
+  }
+  .spinner {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(128, 128, 128, 0.3);
+    border-top-color: var(--vscode-progressBar-background, #3b82f6);
+    animation: os-spin 0.8s linear infinite;
+  }
+  .spinner.inline {
+    width: 11px;
+    height: 11px;
+    border-width: 1.8px;
+    border-color: rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+  }
+  .loading-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .elapsed-pill {
+    font-family: var(--vscode-editor-font-family, monospace);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 9px;
+    background: rgba(128, 128, 128, 0.18);
+    color: var(--vscode-descriptionForeground);
+  }
+  .loading-sub {
+    margin-top: 5px;
+    padding-left: 22px;
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: var(--vscode-descriptionForeground);
+  }
+  .skeleton-card {
+    border: 1px solid var(--vscode-editorWidget-border, rgba(128,128,128,0.22));
+    border-radius: 6px;
+    padding: 12px;
+    background: var(--vscode-editorWidget-background, rgba(128,128,128,0.05));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .skel-line {
+    height: 10px;
+    border-radius: 4px;
+    background: rgba(128, 128, 128, 0.2);
+    animation: os-pulse 1.5s ease-in-out infinite;
+  }
+  .skel-line.title { height: 13px; width: 68%; }
+  .skel-line.sub   { width: 42%; opacity: 0.7; }
+  .skel-line.quote { height: 32px; width: 100%; opacity: 0.55; }
+  @keyframes os-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes os-indeterminate {
+    0%   { left: -40%; width: 38%; }
+    50%  { left: 32%;  width: 52%; }
+    100% { left: 105%; width: 32%; }
+  }
+  @keyframes os-pulse {
+    0%, 100% { opacity: 0.35; }
+    50%      { opacity: 0.72; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner, .progress-bar, .skel-line { animation: none; }
+    .progress-bar { left: 0; width: 100%; opacity: 0.5; }
   }
   .results {
     display: flex;
@@ -675,6 +796,84 @@ export class CitationFinderPanel implements vscode.Disposable {
     const resultsEl = document.getElementById('results');
 
     let state = { anchor: null, notesFile: '', results: [] };
+    let loadingTimer = null;
+    let loadingStartedAt = 0;
+
+    function stopLoadingTimer() {
+      if (loadingTimer !== null) {
+        clearInterval(loadingTimer);
+        loadingTimer = null;
+      }
+      searchBtn.disabled = false;
+      searchBtn.textContent = 'Search';
+    }
+
+    function formatElapsed(ms) {
+      const sec = ms / 1000;
+      return sec < 10 ? sec.toFixed(1) + 's' : Math.round(sec) + 's';
+    }
+
+    function startLoadingUi(useReranker, modelName) {
+      stopLoadingTimer();
+      loadingStartedAt = Date.now();
+      searchBtn.disabled = true;
+      searchBtn.innerHTML = '<span class="spinner inline" aria-hidden="true"></span>Searching…';
+
+      const shortModel = String(modelName || 'BAAI/bge-reranker-base').split('/').pop();
+      const initialTitle = useReranker
+        ? \`Searching Zotero library & reranking with \${shortModel}…\`
+        : 'Searching Zotero library (hybrid semantic + BM25)…';
+      const initialSub = useReranker
+        ? 'Typically ~1–4 s once the reranker is warm in memory.'
+        : 'Fast hybrid mode — typically finishes in under 1 s.';
+
+      statusEl.innerHTML = \`
+        <div class="loading-card" role="status" aria-live="polite">
+          <div class="progress-track"><div class="progress-bar"></div></div>
+          <div class="loading-top">
+            <div class="loading-title-wrap">
+              <span class="spinner" aria-hidden="true"></span>
+              <span id="loading-title">\${esc(initialTitle)}</span>
+            </div>
+            <div class="loading-right">
+              <span id="loading-elapsed" class="elapsed-pill">0.0s</span>
+              <button id="cancel-search-btn" type="button" title="Cancel current search">Cancel</button>
+            </div>
+          </div>
+          <div id="loading-sub" class="loading-sub">\${esc(initialSub)}</div>
+        </div>
+      \`;
+
+      resultsEl.innerHTML = [0, 1].map(() => \`
+        <div class="skeleton-card" aria-hidden="true">
+          <div class="skel-line title"></div>
+          <div class="skel-line sub"></div>
+          <div class="skel-line quote"></div>
+        </div>
+      \`).join('');
+
+      const cancelBtn = document.getElementById('cancel-search-btn');
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => vscode.postMessage({ type: 'cancelSearch' }));
+      }
+
+      const titleEl = document.getElementById('loading-title');
+      const subEl = document.getElementById('loading-sub');
+      const elapsedEl = document.getElementById('loading-elapsed');
+
+      loadingTimer = setInterval(() => {
+        const ms = Date.now() - loadingStartedAt;
+        if (elapsedEl) elapsedEl.textContent = formatElapsed(ms);
+        if (!useReranker) return;
+        if (ms >= 8000) {
+          if (titleEl) titleEl.textContent = \`Downloading / warming up \${shortModel} locally…\`;
+          if (subEl) subEl.textContent = 'First run caches the local CrossEncoder once (~1 GB for bge-reranker-base); later searches take ~1–3 s. You can cancel and uncheck Rerank for instant hybrid results.';
+        } else if (ms >= 2500) {
+          if (titleEl) titleEl.textContent = \`Reranking top candidate passages with \${shortModel}…\`;
+          if (subEl) subEl.textContent = 'Scoring top recall candidates and extracting verbatim supporting sentences (first run caches the model once).';
+        }
+      }, 150);
+    }
 
     function esc(s) {
       return String(s ?? '')
@@ -834,17 +1033,20 @@ export class CitationFinderPanel implements vscode.Disposable {
         state.notesFile = m.notesFile || '';
         state.results = [];
         renderMeta();
+        startLoadingUi(rerankEl.checked, m.rerankerModel);
+      } else if (m.type === 'cancelled') {
+        stopLoadingTimer();
         resultsEl.innerHTML = '';
-        statusEl.innerHTML = '<div class="status-banner">Searching Zotero library and reranking passages locally…' +
-          (rerankEl.checked ? ' <span style="opacity:0.75">(first run caches the local CrossEncoder model once)</span>' : '') +
-          '</div>';
+        statusEl.innerHTML = '<div class="status-banner">Search cancelled. Adjust your claim or uncheck <strong>Rerank</strong> for instant hybrid search.</div>';
       } else if (m.type === 'error') {
+        stopLoadingTimer();
         resultsEl.innerHTML = '';
         const setupBtn = m.needsSetup ? ' <button id="run-setup-btn" class="primary" style="margin-left:8px">Run Setup</button>' : '';
         statusEl.innerHTML = \`<div class="status-banner error">\${esc(m.message)}\${setupBtn}</div>\`;
         const b = document.getElementById('run-setup-btn');
         if (b) b.addEventListener('click', () => vscode.postMessage({ type: 'runSetup' }));
       } else if (m.type === 'results') {
+        stopLoadingTimer();
         state.results = m.results || [];
         const rerankerLabel = m.reranker === 'fallback' ? 'hybrid+lexical fallback' : m.reranker;
         renderMeta(\`\${state.results.length} papers · \${esc(rerankerLabel)} · \${m.elapsedMs} ms\`);

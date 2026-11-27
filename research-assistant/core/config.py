@@ -46,7 +46,7 @@ class RetrievalConfig(BaseModel):
     semantic_weight: float = 0.7
     rrf_k: int = 60
     recall_k: int = 30
-    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    reranker_model: str = "BAAI/bge-reranker-base"
 
 
 class ApiConfig(BaseModel):

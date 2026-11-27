@@ -17,7 +17,7 @@ retrieval:
   semantic_weight: 0.7
   rrf_k: 60
   recall_k: 30
-  reranker_model: cross-encoder/ms-marco-MiniLM-L-6-v2
+  reranker_model: BAAI/bge-reranker-base
 
 api:
   host: 127.0.0.1

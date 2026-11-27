@@ -1018,7 +1018,7 @@ export class ResearchAssistantService implements vscode.Disposable {
           use_reranker: useReranker,
           reranker_model: rerankerModel ?? null,
         },
-        120000,
+        300000,
       );
       if (resp.data) return { ok: true, data: resp.data };
       // If an older daemon is still running on this port (404), fall through cleanly to direct CLI execution.

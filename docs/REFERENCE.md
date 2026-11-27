@@ -73,7 +73,7 @@ Select any claim in a `.tex` file or the PDF preview and trigger **Find Supporti
 | `openScriptorium.researchAssistant.webUiPort` | `8000` | Local port for the Research Assistant Web UI and warm CLI daemon |
 | `openScriptorium.researchAssistant.autoStartDaemon` | `true` | Keep the local HTTP service warm for ~50 ms `ra` CLI searches |
 | `openScriptorium.researchAssistant.mcpFallback` | `false` | Also register the stdio FastMCP server for clients without shell access |
-| `openScriptorium.researchAssistant.rerankerModel` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Local `sentence-transformers` CrossEncoder model for claim-support ranking |
+| `openScriptorium.researchAssistant.rerankerModel` | `BAAI/bge-reranker-base` | Local `sentence-transformers` CrossEncoder model for claim-support and `--rerank` scoring |
 
 ### Main File Auto-Detection
 

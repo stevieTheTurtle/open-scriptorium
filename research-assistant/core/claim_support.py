@@ -315,13 +315,14 @@ def _softmax(vals: list[float]) -> list[float]:
 def _score_with_cross_encoder(model: Any, pairs: list[tuple[str, str]]) -> list[float]:
     """Score (claim, passage) pairs into calibrated [0, 1] support scores.
 
-    Supports both single-logit relevance cross-encoders (MS-MARCO, BGE-reranker)
-    and 3-class NLI models (entailment / neutral / contradiction).
+    Supports both single-logit relevance cross-encoders (BGE-reranker, MS-MARCO),
+    which expect (query, passage) = (claim, passage), and 3-class NLI models
+    (entailment / neutral / contradiction), which expect (premise, hypothesis) =
+    (passage, claim).
     """
     if not pairs:
         return []
-    raw = model.predict(pairs, show_progress_bar=False)
-    # Detect NLI label mapping if multi-class
+    # Detect NLI label mapping before inference so NLI models receive (premise=passage, hypothesis=claim)
     entail_idx: Optional[int] = None
     id2label = getattr(getattr(model, "model", None), "config", None)
     id2label = getattr(id2label, "id2label", None) if id2label is not None else None
@@ -330,6 +331,9 @@ def _score_with_cross_encoder(model: Any, pairs: list[tuple[str, str]]) -> list[
             if "entail" in str(v).lower():
                 entail_idx = int(k)
                 break
+
+    effective_pairs = [(passage, claim) for claim, passage in pairs] if entail_idx is not None else pairs
+    raw = model.predict(effective_pairs, show_progress_bar=False)
 
     scores: list[float] = []
     for item in raw:

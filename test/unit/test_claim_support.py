@@ -58,22 +58,40 @@ class TestClaimSupport(unittest.TestCase):
         self.assertIn("relying entirely on self-attention", quote)
         self.assertGreater(score, 0.2)
 
+    def test_default_reranker_is_bge_reranker_base(self) -> None:
+        from core.config import RetrievalConfig
+
+        self.assertEqual(RetrievalConfig().reranker_model, "BAAI/bge-reranker-base")
+
     def test_score_with_cross_encoder_single_logit_and_nli(self) -> None:
         class FakeMsMarco:
+            def __init__(self) -> None:
+                self.seen_pairs: list[tuple[str, str]] = []
+
             def predict(self, pairs, show_progress_bar=False):
+                self.seen_pairs = list(pairs)
                 return [2.0, -2.0]
 
-        scores = claim_support._score_with_cross_encoder(FakeMsMarco(), [("a", "b"), ("a", "c")])
+        ms = FakeMsMarco()
+        scores = claim_support._score_with_cross_encoder(ms, [("claim1", "passage1"), ("claim2", "passage2")])
+        self.assertEqual(ms.seen_pairs, [("claim1", "passage1"), ("claim2", "passage2")])
         self.assertGreater(scores[0], 0.85)
         self.assertLess(scores[1], 0.15)
 
         class FakeNli:
             model = SimpleNamespace(config=SimpleNamespace(id2label={0: "contradiction", 1: "entailment", 2: "neutral"}))
 
+            def __init__(self) -> None:
+                self.seen_pairs: list[tuple[str, str]] = []
+
             def predict(self, pairs, show_progress_bar=False):
+                self.seen_pairs = list(pairs)
                 return [[0.1, 4.0, 0.2], [4.0, 0.1, 0.2]]
 
-        nli_scores = claim_support._score_with_cross_encoder(FakeNli(), [("a", "b"), ("a", "c")])
+        nli = FakeNli()
+        nli_scores = claim_support._score_with_cross_encoder(nli, [("claim1", "passage1"), ("claim2", "passage2")])
+        # NLI models must receive (premise=passage, hypothesis=claim)
+        self.assertEqual(nli.seen_pairs, [("passage1", "claim1"), ("passage2", "claim2")])
         self.assertGreater(nli_scores[0], 0.9)
         self.assertLess(nli_scores[1], 0.1)
 
