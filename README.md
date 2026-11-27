@@ -4,7 +4,8 @@
 
 <p align="center">
   <a href="https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium"><img src="https://img.shields.io/visual-studio-marketplace/v/stevieTheTurtle.open-scriptorium?label=VS%20Code%20Marketplace&color=2B4666" alt="VS Code Marketplace Version" /></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium"><img src="https://img.shields.io/visual-studio-marketplace/i/stevieTheTurtle.open-scriptorium?label=Installs&color=2E5A44" alt="VS Code Marketplace Installs" /></a>
+  <a href="https://open-vsx.org/extension/stevieTheTurtle/open-scriptorium"><img src="https://img.shields.io/open-vsx/v/stevieTheTurtle/open-scriptorium?label=Open%20VSX&color=2E5A44" alt="Open VSX Version" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium"><img src="https://img.shields.io/visual-studio-marketplace/i/stevieTheTurtle.open-scriptorium?label=Installs&color=2B4666" alt="VS Code Marketplace Installs" /></a>
   <a href="https://github.com/stevieTheTurtle/open-scriptorium/releases/latest"><img src="https://img.shields.io/github/v/release/stevieTheTurtle/open-scriptorium?label=Release&color=8B2635" alt="Latest GitHub Release" /></a>
   <a href="https://github.com/stevieTheTurtle/open-scriptorium/actions/workflows/ci.yml"><img src="https://github.com/stevieTheTurtle/open-scriptorium/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/stevieTheTurtle/open-scriptorium?color=9A6B1E" alt="MIT License" /></a>
@@ -85,7 +86,7 @@ You need:
 - [Zotero](https://www.zotero.org/) *(optional, recommended — with [Better BibTeX](https://retorque.re/zotero-better-bibtex/) for `@citekey` matching)*
 - [Node.js](https://nodejs.org/) LTS *(only if building the `.vsix` from source)*
 
-Install **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) from the **[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium)**, grab the latest `.vsix` from **[GitHub Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases)** (ideal for Antigravity IDE, Cursor, or offline installs), or build from source:
+Install **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) from the **[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium)** or **[Open VSX Registry](https://open-vsx.org/extension/stevieTheTurtle/open-scriptorium)** (for Antigravity IDE, Cursor, and VSCodium), grab the latest `.vsix` from **[GitHub Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases)**, or build from source:
 
 ```bash
 git clone https://github.com/stevieTheTurtle/open-scriptorium.git
@@ -165,7 +166,7 @@ The default output folder ignores itself in Git, so build files stay out of your
 - [x] Packaged `.vsix` releases
 - [x] Automatic Tectonic installation on first use
 - [x] VS Code Marketplace publishing (`stevieTheTurtle.open-scriptorium`)
-- [ ] Open VSX Registry publishing
+- [x] Open VSX Registry publishing (`stevieTheTurtle.open-scriptorium`)
 - [ ] Full macOS and Linux verification
 
 ## Development

@@ -48,6 +48,7 @@ await esbuild.build({
 await cp('src/webview/viewer.css', 'dist/viewer.css');
 await cp(path.join(buildDir, 'pdf.worker.min.mjs'), 'dist/pdfjs/pdf.worker.min.mjs');
 await cp(path.join(pdfjs, 'web/pdf_viewer.css'), 'dist/pdfjs/pdf_viewer.css');
+await cp(path.join(pdfjs, 'LICENSE'), 'dist/pdfjs/LICENSE');
 for (const dir of ['wasm', 'standard_fonts', 'cmaps', 'iccs']) {
   await cp(path.join(pdfjs, dir), path.join('dist/pdfjs', dir), { recursive: true }).catch((e) => {
     console.warn(`missing PDF.js runtime folder ${dir}: ${e.code}`);

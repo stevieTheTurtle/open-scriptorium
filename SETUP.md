@@ -64,8 +64,8 @@ Runtime state on each PC (kept outside the extension folder so upgrades never wi
 
 ## Part 1: Install Open Scriptorium (VS Code / Antigravity IDE)
 
-### Option A — Install from VS Code Marketplace (recommended)
-Search for **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) in the Extensions view (`Ctrl+Shift+X`), open the [Marketplace listing](https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium), or install via CLI:
+### Option A — Install from VS Code Marketplace or Open VSX (recommended)
+Search for **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) in the Extensions view (`Ctrl+Shift+X`), open the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium) or [Open VSX Registry](https://open-vsx.org/extension/stevieTheTurtle/open-scriptorium) listing, or install via CLI:
 ```bash
 code --install-extension stevieTheTurtle.open-scriptorium
 ```

@@ -2,6 +2,12 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.4.1] - 2026-11-27
+
+### Added
+- Published **Open Scriptorium** (`stevieTheTurtle.open-scriptorium`) to the **Open VSX Registry** alongside the VS Code Marketplace for automatic updates in Antigravity IDE, Cursor, and VSCodium.
+- Bundled Mozilla's Apache-2.0 `LICENSE` file for `pdfjs-dist` into `dist/pdfjs/LICENSE` inside the `.vsix` package.
+
 ## [0.4.0] - 2026-11-26
 
 ### Added
