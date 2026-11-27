@@ -2,6 +2,11 @@
 
 All notable changes to **Open Scriptorium** are documented in this file.
 
+## [0.5.1] - 2026-11-27
+
+### Changed
+- Restored the **Citation Verification & Claim Search** showcase (with the `citation-states.png` visual, verification states breakdown, and `Ctrl+Alt+C` / `ra` claim-search workflow) directly to `README.md` across GitHub, VS Code Marketplace, and Open VSX.
+
 ## [0.5.0] - 2026-11-27
 
 ### Added

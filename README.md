@@ -32,6 +32,20 @@
 - **Native PDF preview & exact-word SyncTeX** — Offline PDF.js tab with outline, in-PDF search (`Ctrl+F`), `Ctrl+Click` hyperlinks, and two-way source jump.
 - **Private by design** — Your PDFs, vector index, and Zotero sync stay local; Tectonic always runs with `--untrusted`.
 
+## Citation Verification & Claim Search
+
+<p align="center">
+  <img src="assets/citation-states.png" alt="PDF citation verification states: Verified, Second-hand, Unverified" width="100%" />
+</p>
+
+Every `\cite{...}` in your PDF preview is checked automatically against your local Zotero index and `references.notes.json`:
+
+- **Verified** — Matched to an indexed PDF in Zotero; hovering reveals bibliographic metadata alongside the verbatim supporting quote and exact page number.
+- **Second-hand (amber)** — Not yet in your Zotero library, but cited by other indexed papers; hovering lists the citing papers and extracted citing phrases.
+- **Unverified (crimson)** — Not indexed and unmentioned across your library; clears automatically once added to Zotero and synced.
+
+**Find Supporting Citation in Zotero (`Ctrl+Alt+C`)** — Select any claim in a `.tex` file or the PDF preview (or click the floating **Find Citation** pill) to run a 100% local, zero-LLM pipeline: cleans LaTeX/PDF artifacts, runs hybrid recall (ChromaDB semantic + SQLite FTS5 BM25), reranks with a local Cross-Encoder, and extracts 1–2 verbatim supporting sentences with page numbers for one-click `\cite{key}` insertion and automatic evidence logging. AI agents can drive the same index via `ra search`, `ra find-support`, and `ra chunks` with pushdown filters (`--citekey`, `--tag`, `--author`, `--year-from`/`--year-to`), `--mode hybrid|semantic|bm25`, and opt-in `--rerank`.
+
 ## Quick Start
 
 1. **Install** from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=stevieTheTurtle.open-scriptorium), [Open VSX](https://open-vsx.org/extension/stevieTheTurtle/open-scriptorium), or [GitHub Releases](https://github.com/stevieTheTurtle/open-scriptorium/releases):
