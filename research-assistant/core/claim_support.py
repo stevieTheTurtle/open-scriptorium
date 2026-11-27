@@ -19,7 +19,13 @@ import time
 from typing import Any, Callable, Optional
 
 from core.config import get_config
-from core.database import chroma_query, fts_search_or, get_paper, get_sqlite_path
+from core.database import (
+    chroma_query,
+    fts_search_or,
+    get_paper,
+    get_sqlite_path,
+    resolve_filtered_paper_ids,
+)
 from core.embeddings import get_provider
 
 logger = logging.getLogger(__name__)
@@ -373,6 +379,17 @@ def find_supporting_citations(
     recall_k: Optional[int] = None,
     use_reranker: bool = True,
     reranker_model: Optional[str] = None,
+    paper_ids: Optional[list[str]] = None,
+    citekeys: Optional[list[str]] = None,
+    tags: Optional[list[str]] = None,
+    author: Optional[str] = None,
+    year: Optional[int] = None,
+    year_from: Optional[int] = None,
+    year_to: Optional[int] = None,
+    mode: str = "hybrid",
+    semantic_weight: Optional[float] = None,
+    bm25_weight: Optional[float] = None,
+    rrf_k: Optional[int] = None,
 ) -> dict[str, Any]:
     """Find papers & verbatim sentences in the local library that best support `claim`."""
     t0 = time.perf_counter()
@@ -391,21 +408,47 @@ def find_supporting_citations(
             "results": [],
         }
 
+    resolved_ids = resolve_filtered_paper_ids(
+        paper_ids=paper_ids,
+        citekeys=citekeys,
+        tags=tags,
+        author=author,
+        year=year,
+        year_from=year_from,
+        year_to=year_to,
+    )
+    if resolved_ids is not None and not resolved_ids:
+        return {
+            "claim": clean,
+            "raw_claim": claim,
+            "reranker": "none",
+            "collection": collection,
+            "elapsed_ms": int((time.perf_counter() - t0) * 1000),
+            "results": [],
+        }
+
     eff_recall = max(top_k * 3, recall_k or cfg.retrieval.recall_k or 30)
-    rrf_k = cfg.retrieval.rrf_k
-    sem_w = cfg.retrieval.semantic_weight
-    bm25_w = cfg.retrieval.bm25_weight
+    eff_rrf_k = cfg.retrieval.rrf_k if rrf_k is None else max(1, int(rrf_k))
+    sem_w = cfg.retrieval.semantic_weight if semantic_weight is None else max(0.0, float(semantic_weight))
+    bm25_w = cfg.retrieval.bm25_weight if bm25_weight is None else max(0.0, float(bm25_weight))
+    if sem_w == 0.0 and bm25_w == 0.0:
+        sem_w, bm25_w = 1.0, 1.0
 
     # ── Stage 1: Hybrid recall (ChromaDB semantic + sanitized OR FTS5 BM25) ─
     semantic_hits: list[tuple[str, float]] = []
-    try:
-        provider = get_provider(cfg)
-        query_emb = provider.embed_query(clean)
-        semantic_hits = chroma_query(query_emb, top_k=eff_recall)
-    except Exception as exc:
-        logger.warning("Semantic recall failed (%s); continuing with FTS5 BM25.", exc)
+    if mode in ("hybrid", "semantic"):
+        try:
+            provider = get_provider(cfg)
+            query_emb = provider.embed_query(clean)
+            semantic_hits = chroma_query(query_emb, top_k=eff_recall, paper_ids=resolved_ids)
+        except Exception as exc:
+            if mode == "semantic":
+                raise
+            logger.warning("Semantic recall failed (%s); continuing with FTS5 BM25.", exc)
 
-    bm25_hits = fts_search_or(clean, top_k=eff_recall)
+    bm25_hits: list[tuple[str, str, float]] = []
+    if mode in ("hybrid", "bm25"):
+        bm25_hits = fts_search_or(clean, top_k=eff_recall, paper_ids=resolved_ids)
 
     sem_rank = {cid: i + 1 for i, (cid, _) in enumerate(semantic_hits)}
     bm25_rank = {cid: i + 1 for i, (cid, _, _) in enumerate(bm25_hits)}
@@ -425,9 +468,9 @@ def find_supporting_citations(
     for cid in all_ids:
         score = 0.0
         if cid in sem_rank:
-            score += sem_w / (rrf_k + sem_rank[cid])
+            score += sem_w / (eff_rrf_k + sem_rank[cid])
         if cid in bm25_rank:
-            score += bm25_w / (rrf_k + bm25_rank[cid])
+            score += bm25_w / (eff_rrf_k + bm25_rank[cid])
         fused.append((cid, score))
     fused.sort(key=lambda x: x[1], reverse=True)
 

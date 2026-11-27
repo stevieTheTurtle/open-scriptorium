@@ -98,7 +98,7 @@ When `openScriptorium.mainFile` is empty, Open Scriptorium selects the root docu
 - Pure TypeScript SyncTeX engine (no external `synctex` binary required): highlights the exact typeset line from source, or double-click any word in the PDF to select that exact word in `.tex`.
 
 ### Research Assistant CLI (`ra`) & Web UI
-- **Library search**: `ra search "query" -k 5 --compact`, `ra search "query" -k 8 --context`, `ra find-support "claim" -k 8`, `ra detail <paper_id>`, `ra list [--tag <tag>] [--year <YYYY>] --compact`, `ra add paper.pdf --tags "a,b"`, `ra status`.
+- **Library search & reading**: `ra search "query" -k 5 --compact` (supports pushdown filters `--citekey`, `--paper-id`, `--tag`, `--author`, `--year`, `--year-from`, `--year-to`, plus `--mode hybrid|semantic|bm25`, `--semantic-weight`, `--bm25-weight`, `--rrf-k`, `--recall-k`, `--rerank`), `ra search "query" -k 8 --context`, `ra find-support "claim" -k 8` (same filters/knobs + sentence-level quote extraction), `ra chunks <paper_id|@citekey> --page N`, `ra detail <paper_id|@citekey>`, `ra list [--tag <tag>] [--year <YYYY>] --compact`, `ra add paper.pdf --tags "a,b"`, `ra status`.
 - **Evidence notes & BibTeX** *(instant stdlib commands)*: `ra notes add --key <key> --quote "..." --page <N> --file "<rel.tex>" --claim "..." --paper-id "<id>"`, `ra notes get <key>`, `ra notes audit`, `ra bib get <key>`.
 - **Online arXiv** *(only when explicitly requested)*: `ra arxiv search "query" -n 10`, `ra arxiv fetch <arxiv_id> [--add --tags "..."]`.
 - **Web UI**: run `Open Scriptorium: Research Assistant: Open Web UI` (`http://127.0.0.1:8000`) to browse collections, upload PDFs, edit tags, and test queries.

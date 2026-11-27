@@ -25,7 +25,11 @@ Use `--compact` / `--top-k` to keep outputs tight and save tokens.
 ### Local Paper Library
 - `{{RA_CLI_CMD}} search "<query>" -k 5 --compact` — Compact hybrid semantic + BM25 search returning `@citekey`, `Paper ID`, and `[p.N]` verbatim excerpts.
 - `{{RA_CLI_CMD}} search "<query>" -k 8 --context` — Full `[Ref N]` + `--- REFERENCES BLOCK ---` format for answering literature questions directly in chat.
-- `{{RA_CLI_CMD}} detail <paper_id>` — Full paper metadata & abstract.
+  - **Pushdown filters** (pushed directly into ChromaDB & SQLite FTS5 before ranking): `--citekey <key>` (repeatable or CSV, with/without `@`), `--paper-id <id_or_prefix>`, `--tag <tag_or_coll:Folder>` (repeatable; parent `coll:` matches subcollections), `--author <substr>`, `--year <YYYY>`, `--year-from <YYYY>`, `--year-to <YYYY>`.
+  - **Retrieval knobs**: `--mode hybrid|semantic|bm25` (use `bm25` for exact acronyms/symbols/author terms, `semantic` for paraphrases), `--semantic-weight <float>`, `--bm25-weight <float>`, `--rrf-k <int>`, `--recall-k <int>`, `--rerank` (local CrossEncoder reranking for higher precision), `--max-chunks <N>`, `--max-chars <N>`.
+- `{{RA_CLI_CMD}} find-support "<claim>" -k 8` — Hybrid recall + local CrossEncoder reranker + sentence-level verbatim quote extractor (supports the same `--citekey`, `--tag`, `--author`, `--year*`, `--mode`, `--recall-k`, and `--no-rerank` flags). Ideal for matching a specific LaTeX claim to 1–2 exact supporting sentences.
+- `{{RA_CLI_CMD}} chunks <paper_id|@citekey> [--page N | --page-from N --page-to M]` — Read full verbatim indexed chunks for specific pages of a known paper (useful when a search excerpt is truncated or crosses a chunk boundary).
+- `{{RA_CLI_CMD}} detail <paper_id|@citekey>` — Full paper metadata & abstract.
 - `{{RA_CLI_CMD}} list [--tag <tag>] [--year <YYYY>] --compact` — Browse indexed papers.
 - `{{RA_CLI_CMD}} add <pdf_path> [--tags "a,b"]` — Index a local PDF.
 - `{{RA_CLI_CMD}} status` — Paper/chunk counts and daemon health.

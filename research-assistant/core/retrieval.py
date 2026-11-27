@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+import logging
 import sqlite3
 from collections import defaultdict
-from pathlib import Path
+from typing import Literal
 
 from core.config import get_config
-from core.database import chroma_query, fts_search, get_paper, list_papers, get_sqlite_path
+from core.database import (
+    chroma_query,
+    fts_search,
+    get_paper,
+    get_sqlite_path,
+    resolve_filtered_paper_ids,
+)
 from core.embeddings import get_provider
-from core.models import ChunkResult, Paper, SearchResult
+from core.models import ChunkResult, SearchResult
+
+logger = logging.getLogger(__name__)
+
+SearchMode = Literal["hybrid", "semantic", "bm25"]
 
 
 def _rrf_score(ranks: list[int], k: int = 60) -> float:
@@ -24,60 +35,135 @@ def _get_chunk_by_id(chunk_id: str) -> tuple[str, int] | None:
     return (row["content"], row["page_number"]) if row else None
 
 
-def search(query: str, top_k: int | None = None, paper_ids: list[str] | None = None) -> list[SearchResult]:
+def search(
+    query: str,
+    top_k: int | None = None,
+    paper_ids: list[str] | None = None,
+    *,
+    citekeys: list[str] | None = None,
+    tags: list[str] | None = None,
+    author: str | None = None,
+    year: int | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    mode: SearchMode = "hybrid",
+    semantic_weight: float | None = None,
+    bm25_weight: float | None = None,
+    rrf_k: int | None = None,
+    recall_k: int | None = None,
+    rerank: bool = False,
+    reranker_model: str | None = None,
+    max_chunks_per_paper: int = 5,
+) -> list[SearchResult]:
     cfg = get_config()
     k = top_k or cfg.retrieval.top_k
-    rrf_k = cfg.retrieval.rrf_k
+    eff_rrf_k = cfg.retrieval.rrf_k if rrf_k is None else max(1, int(rrf_k))
+    sem_w = cfg.retrieval.semantic_weight if semantic_weight is None else max(0.0, float(semantic_weight))
+    bm25_w = cfg.retrieval.bm25_weight if bm25_weight is None else max(0.0, float(bm25_weight))
+    if sem_w == 0.0 and bm25_w == 0.0:
+        sem_w, bm25_w = 1.0, 1.0
+
+    default_recall = max(k * 3, cfg.retrieval.recall_k) if rerank else max(k * 2, 16)
+    eff_recall = max(k, recall_k or default_recall)
+
+    # ── Pushdown filter resolution ──────────────────────────────────────────
+    resolved_ids = resolve_filtered_paper_ids(
+        paper_ids=paper_ids,
+        citekeys=citekeys,
+        tags=tags,
+        author=author,
+        year=year,
+        year_from=year_from,
+        year_to=year_to,
+    )
+    if resolved_ids is not None and not resolved_ids:
+        return []
 
     # ── Semantic retrieval ──────────────────────────────────────────────────
-    provider = get_provider(cfg)
-    query_emb = provider.embed_query(query)
-    semantic_hits = chroma_query(query_emb, top_k=k * 2)  # (chunk_id, distance)
+    semantic_hits: list[tuple[str, float]] = []
+    if mode in ("hybrid", "semantic"):
+        try:
+            provider = get_provider(cfg)
+            query_emb = provider.embed_query(query)
+            semantic_hits = chroma_query(query_emb, top_k=eff_recall, paper_ids=resolved_ids)
+        except Exception as exc:
+            if mode == "semantic":
+                raise
+            logger.warning("Semantic retrieval failed (%s); falling back to BM25.", exc)
 
     # ── BM25 retrieval ──────────────────────────────────────────────────────
-    bm25_hits = fts_search(query, top_k=k * 2)  # (chunk_id, content, score)
+    bm25_hits: list[tuple[str, float, float] | tuple[str, str, float]] = []
+    if mode in ("hybrid", "bm25"):
+        bm25_hits = fts_search(query, top_k=eff_recall, paper_ids=resolved_ids)
 
-    # ── Build rank maps ─────────────────────────────────────────────────────
-    semantic_rank: dict[str, int] = {cid: i + 1 for i, (cid, _) in enumerate(semantic_hits)}
-    bm25_rank: dict[str, int] = {cid: i + 1 for i, (cid, _, _) in enumerate(bm25_hits)}
-
-    all_chunk_ids = set(semantic_rank) | set(bm25_rank)
-
-    # ── RRF fusion ──────────────────────────────────────────────────────────
+    # ── Score & fuse candidates ─────────────────────────────────────────────
     scored: list[tuple[str, float]] = []
-    for cid in all_chunk_ids:
-        ranks = []
-        if cid in semantic_rank:
-            ranks.append(semantic_rank[cid])
-        if cid in bm25_rank:
-            ranks.append(bm25_rank[cid])
-        scored.append((cid, _rrf_score(ranks, rrf_k)))
+    if mode == "semantic":
+        scored = [(cid, max(0.0, 1.0 - float(dist))) for cid, dist in semantic_hits]
+    elif mode == "bm25":
+        scored = [(cid, float(score)) for cid, _, score in bm25_hits]
+    else:
+        semantic_rank: dict[str, int] = {cid: i + 1 for i, (cid, _) in enumerate(semantic_hits)}
+        bm25_rank: dict[str, int] = {cid: i + 1 for i, (cid, _, _) in enumerate(bm25_hits)}
+        all_chunk_ids = set(semantic_rank) | set(bm25_rank)
+        for cid in all_chunk_ids:
+            s = 0.0
+            if cid in semantic_rank:
+                s += sem_w / (eff_rrf_k + semantic_rank[cid])
+            if cid in bm25_rank:
+                s += bm25_w / (eff_rrf_k + bm25_rank[cid])
+            scored.append((cid, s))
 
     scored.sort(key=lambda x: x[1], reverse=True)
+    if not scored:
+        return []
 
-    # ── Build results grouped by paper ──────────────────────────────────────
-    paper_chunks: dict[str, list[ChunkResult]] = defaultdict(list)
-    paper_score: dict[str, float] = defaultdict(float)
+    pool_limit = max(k * 3, eff_recall if rerank else k * 3)
+    top_scored = scored[:pool_limit]
+    candidate_ids = [cid for cid, _ in top_scored]
 
+    # ── Batched SQLite chunk fetch ──────────────────────────────────────────
     conn = sqlite3.connect(str(get_sqlite_path()))
     conn.row_factory = sqlite3.Row
+    placeholders = ",".join("?" for _ in candidate_ids)
+    rows = conn.execute(
+        f"SELECT id, content, page_number, paper_id FROM chunks WHERE id IN ({placeholders})",
+        candidate_ids,
+    ).fetchall()
+    conn.close()
 
+    chunk_by_id = {r["id"]: r for r in rows}
+    ordered_rows: list[tuple[sqlite3.Row, float]] = [
+        (chunk_by_id[cid], sc) for cid, sc in top_scored if cid in chunk_by_id
+    ]
+    if not ordered_rows:
+        return []
+
+    # ── Optional local CrossEncoder reranking ───────────────────────────────
+    if rerank:
+        from core.claim_support import _get_reranker, _score_with_cross_encoder, clean_pdf_excerpt
+
+        model_name = (reranker_model or cfg.retrieval.reranker_model or "").strip()
+        ce_model = _get_reranker(model_name) if model_name else None
+        if ce_model is not None:
+            pairs = [(query, clean_pdf_excerpt(row["content"])) for row, _ in ordered_rows]
+            ce_scores = _score_with_cross_encoder(ce_model, pairs)
+            ordered_rows = sorted(
+                ((row, float(sc)) for (row, _), sc in zip(ordered_rows, ce_scores)),
+                key=lambda x: x[1],
+                reverse=True,
+            )
+
+    # ── Group by paper ──────────────────────────────────────────────────────
+    paper_chunks: dict[str, list[ChunkResult]] = defaultdict(list)
+    paper_score: dict[str, float] = defaultdict(float)
     seen_papers: set[str] = set()
 
-    for chunk_id, score in scored[: k * 3]:
-        row = conn.execute(
-            "SELECT content, page_number, paper_id FROM chunks WHERE id=?", (chunk_id,)
-        ).fetchone()
-        if row is None:
-            continue
+    for row, score in ordered_rows:
         pid = row["paper_id"]
-
-        if paper_ids and pid not in paper_ids:
-            continue
-
         paper_chunks[pid].append(
             ChunkResult(
-                chunk_id=chunk_id,
+                chunk_id=row["id"],
                 content=row["content"],
                 page_number=row["page_number"],
                 score=score,
@@ -86,20 +172,38 @@ def search(query: str, top_k: int | None = None, paper_ids: list[str] | None = N
         paper_score[pid] = max(paper_score[pid], score)
         seen_papers.add(pid)
 
-    conn.close()
-
+    chunk_cap = max(1, int(max_chunks_per_paper))
     results: list[SearchResult] = []
     for pid in sorted(seen_papers, key=lambda p: paper_score[p], reverse=True)[:k]:
         paper = get_paper(pid)
         if paper is None:
             continue
-        chunks = sorted(paper_chunks[pid], key=lambda c: c.score, reverse=True)[:5]
+        chunks = sorted(paper_chunks[pid], key=lambda c: c.score, reverse=True)[:chunk_cap]
         results.append(SearchResult(paper=paper, chunks=chunks, score=paper_score[pid]))
 
     return results
 
 
-def get_context_for_query(query: str, top_k: int | None = None) -> str:
+def get_context_for_query(
+    query: str,
+    top_k: int | None = None,
+    *,
+    paper_ids: list[str] | None = None,
+    citekeys: list[str] | None = None,
+    tags: list[str] | None = None,
+    author: str | None = None,
+    year: int | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+    mode: SearchMode = "hybrid",
+    semantic_weight: float | None = None,
+    bm25_weight: float | None = None,
+    rrf_k: int | None = None,
+    recall_k: int | None = None,
+    rerank: bool = False,
+    reranker_model: str | None = None,
+    max_chunks_per_paper: int = 4,
+) -> str:
     """Return formatted context string for LLM consumption with citation markers.
 
     Format is structured so the LLM naturally produces [Ref N] inline citations.
@@ -107,7 +211,25 @@ def get_context_for_query(query: str, top_k: int | None = None) -> str:
     trailing References section — which Claude should reproduce verbatim at the
     end of its answer.
     """
-    results = search(query, top_k=top_k)
+    results = search(
+        query,
+        top_k=top_k,
+        paper_ids=paper_ids,
+        citekeys=citekeys,
+        tags=tags,
+        author=author,
+        year=year,
+        year_from=year_from,
+        year_to=year_to,
+        mode=mode,
+        semantic_weight=semantic_weight,
+        bm25_weight=bm25_weight,
+        rrf_k=rrf_k,
+        recall_k=recall_k,
+        rerank=rerank,
+        reranker_model=reranker_model,
+        max_chunks_per_paper=max_chunks_per_paper,
+    )
     if not results:
         return "No relevant papers found in the knowledge base."
 

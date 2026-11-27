@@ -207,14 +207,157 @@ def insert_chunks(chunks: list[Chunk]) -> None:
     conn.close()
 
 
-def get_chunks_for_paper(paper_id: str) -> list[Chunk]:
+def get_chunks_for_paper(
+    paper_id: str,
+    page_from: int | None = None,
+    page_to: int | None = None,
+) -> list[Chunk]:
     conn = _get_conn()
-    rows = conn.execute(
-        "SELECT * FROM chunks WHERE paper_id=? ORDER BY chunk_index", (paper_id,)
-    ).fetchall()
+    sql = "SELECT * FROM chunks WHERE paper_id=?"
+    params: list = [paper_id]
+    if page_from is not None:
+        sql += " AND page_number>=?"
+        params.append(page_from)
+    if page_to is not None:
+        sql += " AND page_number<=?"
+        params.append(page_to)
+    sql += " ORDER BY chunk_index"
+    rows = conn.execute(sql, params).fetchall()
     conn.close()
     return [Chunk(id=r["id"], paper_id=r["paper_id"], content=r["content"],
                   page_number=r["page_number"], chunk_index=r["chunk_index"]) for r in rows]
+
+
+def resolve_paper_ref(ref: str) -> Optional[Paper]:
+    """Resolve a paper by full ID, 6+ char ID prefix, or @citekey (with or without @)."""
+    cleaned = (ref or "").strip()
+    if not cleaned:
+        return None
+    if not cleaned.startswith("@"):
+        exact = get_paper(cleaned)
+        if exact is not None:
+            return exact
+    key_norm = cleaned.lstrip("@").lower()
+    target_tag = f"@{key_norm}"
+    papers = list_papers()
+    for p in papers:
+        if any(t.lower() == target_tag for t in p.tags):
+            return p
+    if not cleaned.startswith("@") and len(cleaned) >= 6:
+        prefix = cleaned.lower()
+        matches = [p for p in papers if p.id.lower().startswith(prefix)]
+        if len(matches) == 1:
+            return matches[0]
+    return None
+
+
+def resolve_filtered_paper_ids(
+    *,
+    paper_ids: list[str] | None = None,
+    citekeys: list[str] | None = None,
+    tags: list[str] | None = None,
+    author: str | None = None,
+    year: int | None = None,
+    year_from: int | None = None,
+    year_to: int | None = None,
+) -> list[str] | None:
+    """Resolve metadata and paper-target filters into a list of matching paper IDs.
+
+    Returns ``None`` when no filters are active (meaning search the entire collection),
+    or a concrete list of matching paper IDs (possibly empty if no paper matches).
+    """
+    clean_pids = [p.strip() for p in (paper_ids or []) if p and p.strip()]
+    clean_keys = [k.strip().lstrip("@").lower() for k in (citekeys or []) if k and k.strip().lstrip("@")]
+    clean_tags = [t.strip().lower() for t in (tags or []) if t and t.strip()]
+    clean_author = (author or "").strip().lower()
+    has_year = year is not None or year_from is not None or year_to is not None
+
+    if not (clean_pids or clean_keys or clean_tags or clean_author or has_year):
+        return None
+
+    conn = _get_conn()
+    sql = "SELECT * FROM papers WHERE 1=1"
+    params: list = []
+    if year is not None:
+        sql += " AND year=?"
+        params.append(year)
+    if year_from is not None:
+        sql += " AND year IS NOT NULL AND year>=?"
+        params.append(year_from)
+    if year_to is not None:
+        sql += " AND year IS NOT NULL AND year<=?"
+        params.append(year_to)
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+
+    papers = [_row_to_paper(r) for r in rows]
+
+    # Explicit paper targets (paper_ids / citekeys): union of specified targets.
+    if clean_pids or clean_keys:
+        pid_lowers = [p.lower() for p in clean_pids]
+        target_key_tags = {f"@{k}" for k in clean_keys}
+        targeted: list[Paper] = []
+        for p in papers:
+            pid_l = p.id.lower()
+            id_match = any(
+                pid_l == target or (len(target) >= 6 and pid_l.startswith(target))
+                for target in pid_lowers
+            )
+            key_match = bool(target_key_tags) and any(
+                t.lower() in target_key_tags for t in p.tags
+            )
+            if id_match or key_match:
+                targeted.append(p)
+        papers = targeted
+
+    # Metadata filters (AND across tags and author).
+    if clean_tags:
+        def _has_tag(paper_tags_lower: list[str], req: str) -> bool:
+            if req in paper_tags_lower:
+                return True
+            if req.startswith("coll:"):
+                prefix = req.rstrip("/") + "/"
+                return any(pt.startswith(prefix) for pt in paper_tags_lower)
+            return False
+
+        papers = [
+            p for p in papers
+            if all(_has_tag([t.lower() for t in p.tags], req) for req in clean_tags)
+        ]
+
+    if clean_author:
+        papers = [
+            p for p in papers
+            if any(clean_author in a.lower() for a in p.authors)
+        ]
+
+    return [p.id for p in papers]
+
+
+def count_chunks_for_papers(paper_ids: list[str] | None = None) -> int:
+    conn = _get_conn()
+    try:
+        if paper_ids is None:
+            row = conn.execute("SELECT COUNT(*) AS n FROM chunks").fetchone()
+            return int(row["n"]) if row else 0
+        if not paper_ids:
+            return 0
+        if len(paper_ids) <= 900:
+            placeholders = ",".join("?" for _ in paper_ids)
+            row = conn.execute(
+                f"SELECT COUNT(*) AS n FROM chunks WHERE paper_id IN ({placeholders})",
+                paper_ids,
+            ).fetchone()
+            return int(row["n"]) if row else 0
+        conn.execute("CREATE TEMP TABLE IF NOT EXISTS _ra_cnt_ids (id TEXT PRIMARY KEY)")
+        conn.execute("DELETE FROM _ra_cnt_ids")
+        conn.executemany("INSERT OR IGNORE INTO _ra_cnt_ids (id) VALUES (?)", [(p,) for p in paper_ids])
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM chunks c JOIN _ra_cnt_ids f ON f.id = c.paper_id"
+        ).fetchone()
+        return int(row["n"]) if row else 0
+    finally:
+        conn.close()
 
 
 def delete_chunks_for_paper(paper_id: str) -> None:
@@ -259,49 +402,90 @@ def build_fts_or_query(text: str, max_terms: int = 24) -> str:
     return " OR ".join(f'"{t}"' for t in terms)
 
 
-def fts_search_or(query: str, top_k: int = 30) -> list[tuple[str, str, float]]:
-    """Sanitized OR-based FTS5 BM25 search safe for arbitrary prose/sentences."""
-    match_expr = build_fts_or_query(query)
-    if not match_expr:
+def _execute_fts_query(
+    match_expr: str,
+    top_k: int,
+    paper_ids: list[str] | None = None,
+) -> list[tuple[str, str, float]]:
+    if paper_ids is not None and not paper_ids:
         return []
     conn = _get_conn()
     try:
-        rows = conn.execute(
-            """SELECT c.id, c.content, bm25(chunks_fts) AS score
-               FROM chunks_fts
-               JOIN chunks c ON c.rowid = chunks_fts.rowid
-               WHERE chunks_fts MATCH ?
-               ORDER BY score
-               LIMIT ?""",
-            (match_expr, top_k),
-        ).fetchall()
-    except sqlite3.OperationalError:
-        rows = []
+        if paper_ids is None:
+            rows = conn.execute(
+                """SELECT c.id, c.content, bm25(chunks_fts) AS score
+                   FROM chunks_fts
+                   JOIN chunks c ON c.rowid = chunks_fts.rowid
+                   WHERE chunks_fts MATCH ?
+                   ORDER BY score
+                   LIMIT ?""",
+                (match_expr, top_k),
+            ).fetchall()
+        elif len(paper_ids) <= 900:
+            placeholders = ",".join("?" for _ in paper_ids)
+            rows = conn.execute(
+                f"""SELECT c.id, c.content, bm25(chunks_fts) AS score
+                    FROM chunks_fts
+                    JOIN chunks c ON c.rowid = chunks_fts.rowid
+                    WHERE chunks_fts MATCH ? AND c.paper_id IN ({placeholders})
+                    ORDER BY score
+                    LIMIT ?""",
+                [match_expr, *paper_ids, top_k],
+            ).fetchall()
+        else:
+            conn.execute("CREATE TEMP TABLE IF NOT EXISTS _ra_fts_ids (id TEXT PRIMARY KEY)")
+            conn.execute("DELETE FROM _ra_fts_ids")
+            conn.executemany(
+                "INSERT OR IGNORE INTO _ra_fts_ids (id) VALUES (?)",
+                [(pid,) for pid in paper_ids],
+            )
+            rows = conn.execute(
+                """SELECT c.id, c.content, bm25(chunks_fts) AS score
+                   FROM chunks_fts
+                   JOIN chunks c ON c.rowid = chunks_fts.rowid
+                   JOIN _ra_fts_ids f ON f.id = c.paper_id
+                   WHERE chunks_fts MATCH ?
+                   ORDER BY score
+                   LIMIT ?""",
+                (match_expr, top_k),
+            ).fetchall()
     finally:
         conn.close()
     return [(r["id"], r["content"], abs(float(r["score"]))) for r in rows]
 
 
-def fts_search(query: str, top_k: int = 20) -> list[tuple[str, str, float]]:
-    """Returns (chunk_id, content, bm25_score) ordered by relevance."""
-    conn = _get_conn()
+def fts_search_or(
+    query: str,
+    top_k: int = 30,
+    paper_ids: list[str] | None = None,
+) -> list[tuple[str, str, float]]:
+    """Sanitized OR-based FTS5 BM25 search safe for arbitrary prose/sentences."""
+    if paper_ids is not None and not paper_ids:
+        return []
+    match_expr = build_fts_or_query(query)
+    if not match_expr:
+        return []
     try:
-        rows = conn.execute(
-            """SELECT c.id, c.content, bm25(chunks_fts) AS score
-               FROM chunks_fts
-               JOIN chunks c ON c.rowid = chunks_fts.rowid
-               WHERE chunks_fts MATCH ?
-               ORDER BY score
-               LIMIT ?""",
-            (query, top_k),
-        ).fetchall()
+        return _execute_fts_query(match_expr, top_k=top_k, paper_ids=paper_ids)
     except sqlite3.OperationalError:
-        conn.close()
-        return fts_search_or(query, top_k=top_k)
-    conn.close()
-    if not rows:
-        return fts_search_or(query, top_k=top_k)
-    return [(r["id"], r["content"], abs(float(r["score"]))) for r in rows]
+        return []
+
+
+def fts_search(
+    query: str,
+    top_k: int = 20,
+    paper_ids: list[str] | None = None,
+) -> list[tuple[str, str, float]]:
+    """Returns (chunk_id, content, bm25_score) ordered by relevance."""
+    if paper_ids is not None and not paper_ids:
+        return []
+    try:
+        hits = _execute_fts_query(query, top_k=top_k, paper_ids=paper_ids)
+    except sqlite3.OperationalError:
+        return fts_search_or(query, top_k=top_k, paper_ids=paper_ids)
+    if not hits:
+        return fts_search_or(query, top_k=top_k, paper_ids=paper_ids)
+    return hits
 
 
 # ─── ChromaDB ────────────────────────────────────────────────────────────────
@@ -343,14 +527,41 @@ def chroma_delete_paper(paper_id: str) -> None:
     col.delete(where={"paper_id": paper_id})
 
 
-def chroma_query(embedding: list[float], top_k: int = 10) -> list[tuple[str, float]]:
-    """Returns (chunk_id, distance) list."""
+def chroma_query(
+    embedding: list[float],
+    top_k: int = 10,
+    paper_ids: list[str] | None = None,
+) -> list[tuple[str, float]]:
+    """Returns (chunk_id, distance) list, optionally filtered to ``paper_ids``."""
+    if paper_ids is not None and not paper_ids:
+        return []
     _, col = _get_chroma()
-    results = col.query(
-        query_embeddings=[embedding],
-        n_results=top_k,
-        include=["distances"],
-    )
+    where: dict | None = None
+    n_results = max(1, int(top_k))
+    if paper_ids is not None:
+        if len(paper_ids) == 1:
+            where = {"paper_id": paper_ids[0]}
+        else:
+            where = {"paper_id": {"$in": list(paper_ids)}}
+        available = count_chunks_for_papers(paper_ids)
+        if available == 0:
+            return []
+        n_results = min(n_results, available)
+    else:
+        total = col.count()
+        if total == 0:
+            return []
+        n_results = min(n_results, total)
+
+    kwargs: dict = {
+        "query_embeddings": [embedding],
+        "n_results": n_results,
+        "include": ["distances"],
+    }
+    if where is not None:
+        kwargs["where"] = where
+
+    results = col.query(**kwargs)
     ids = results["ids"][0]
     distances = results["distances"][0]
     return list(zip(ids, distances))

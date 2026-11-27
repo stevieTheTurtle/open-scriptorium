@@ -35,7 +35,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from mcp.server.fastmcp import FastMCP
 
-from core.database import get_paper, init_db, list_papers
+from core.claim_support import find_supporting_citations as _find_supporting_citations
+from core.database import (
+    get_chunks_for_paper,
+    get_paper,
+    init_db,
+    list_papers,
+    resolve_paper_ref,
+)
 from core.ingest import ingest_pdf, remove_paper
 from core.retrieval import get_context_for_query
 from core.arxiv import download_pdf, fetch_arxiv, search_arxiv
@@ -63,30 +70,139 @@ mcp = FastMCP(
         "Copy it EXACTLY as-is under '## References' at the end of your answer — "
         "do not reformat, abbreviate, or reorder entries.\n"
         "(3) Never state facts from retrieved papers without a [Ref N] citation.\n\n"
-        "Tools: search_papers, get_paper_detail, list_all_papers, add_paper, remove_paper_from_db, "
-        "search_arxiv_papers, fetch_arxiv_paper."
+        "Tools: search_papers, find_supporting_citations, get_paper_chunks, get_paper_detail, "
+        "list_all_papers, add_paper, remove_paper_from_db, search_arxiv_papers, fetch_arxiv_paper."
     ),
 )
 
 
+def _split_csv(raw: str) -> list[str] | None:
+    items = [s.strip() for s in (raw or "").split(",") if s.strip()]
+    return items or None
+
+
 @mcp.tool()
-def search_papers(query: str, top_k: int = 8) -> str:
+def search_papers(
+    query: str,
+    top_k: int = 8,
+    citekeys: str = "",
+    paper_ids: str = "",
+    tags: str = "",
+    author: str = "",
+    year: int = 0,
+    year_from: int = 0,
+    year_to: int = 0,
+    mode: str = "hybrid",
+    semantic_weight: float | None = None,
+    bm25_weight: float | None = None,
+    rrf_k: int | None = None,
+    recall_k: int | None = None,
+    rerank: bool = False,
+) -> str:
     """Search the LOCAL knowledge base — papers the user has already indexed.
 
     Use this when the user asks about papers in their collection, their library,
     papers they have, or any research question to be answered from existing papers.
     This does NOT search the internet or arXiv — it only searches locally stored papers.
+
+    Optional pushdown filters & retrieval knobs:
+    - citekeys: comma-separated Zotero citekeys (e.g. 'lee2004trust,vaswani2017')
+    - paper_ids: comma-separated paper IDs or 6+ char prefixes
+    - tags: comma-separated tags or Zotero folders (e.g. 'coll:HRI,rl')
+    - author: case-insensitive author substring
+    - year / year_from / year_to: publication year filters (0 = unused)
+    - mode: 'hybrid' (default), 'semantic', or 'bm25'
+    - semantic_weight / bm25_weight / rrf_k / recall_k: override RRF & recall settings
+    - rerank: True to run local CrossEncoder reranking for higher precision
     """
-    return get_context_for_query(query, top_k=top_k)
+    eff_mode = mode if mode in ("hybrid", "semantic", "bm25") else "hybrid"
+    return get_context_for_query(
+        query,
+        top_k=top_k,
+        paper_ids=_split_csv(paper_ids),
+        citekeys=_split_csv(citekeys),
+        tags=_split_csv(tags),
+        author=author.strip() or None,
+        year=year or None,
+        year_from=year_from or None,
+        year_to=year_to or None,
+        mode=eff_mode,  # type: ignore[arg-type]
+        semantic_weight=semantic_weight,
+        bm25_weight=bm25_weight,
+        rrf_k=rrf_k,
+        recall_k=recall_k,
+        rerank=rerank,
+    )
+
+
+@mcp.tool()
+def find_supporting_citations(
+    claim: str,
+    top_k: int = 8,
+    recall_k: int = 30,
+    use_reranker: bool = True,
+    citekeys: str = "",
+    paper_ids: str = "",
+    tags: str = "",
+    author: str = "",
+    year: int = 0,
+    year_from: int = 0,
+    year_to: int = 0,
+    mode: str = "hybrid",
+) -> str:
+    """Find local papers and exact 1-2 verbatim supporting sentences for a claim.
+
+    Runs hybrid recall + local CrossEncoder reranking + sentence-level quote extraction.
+    Returns JSON with citekeys, page numbers, verbatim quotes, and calibrated support scores.
+    """
+    eff_mode = mode if mode in ("hybrid", "semantic", "bm25") else "hybrid"
+    data = _find_supporting_citations(
+        claim,
+        top_k=top_k,
+        recall_k=recall_k,
+        use_reranker=use_reranker,
+        paper_ids=_split_csv(paper_ids),
+        citekeys=_split_csv(citekeys),
+        tags=_split_csv(tags),
+        author=author.strip() or None,
+        year=year or None,
+        year_from=year_from or None,
+        year_to=year_to or None,
+        mode=eff_mode,
+    )
+    return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+@mcp.tool()
+def get_paper_chunks(
+    paper_ref: str,
+    page_from: int = 0,
+    page_to: int = 0,
+) -> str:
+    """Read verbatim indexed chunks/pages for a specific paper (by ID, prefix, or @citekey)."""
+    paper = resolve_paper_ref(paper_ref)
+    if paper is None:
+        return f"Paper {paper_ref!r} not found."
+    chunks = get_chunks_for_paper(
+        paper.id,
+        page_from=page_from or None,
+        page_to=page_to or None,
+    )
+    if not chunks:
+        return f"No chunks found for {paper.title!r} in the requested page range."
+    lines = [f"{paper.title} ({paper.year or 'n.d.'}) [ID: {paper.id}]"]
+    for c in chunks:
+        lines.append(f"\n[p.{c.page_number} | chunk #{c.chunk_index}] {c.content.strip()}")
+    return "\n".join(lines)
 
 
 @mcp.tool()
 def get_paper_detail(paper_id: str) -> str:
-    """Get full metadata for a specific paper by its ID.
+    """Get full metadata for a specific paper by ID, prefix, or @citekey.
 
     Returns title, authors, year, abstract, tags, and file location.
     """
-    paper = get_paper(paper_id)
+    paper = resolve_paper_ref(paper_id)
     if paper is None:
         return f"Paper {paper_id!r} not found."
     return json.dumps(paper.model_dump(mode="json"), indent=2)

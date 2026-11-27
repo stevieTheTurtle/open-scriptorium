@@ -10,7 +10,7 @@ import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional
 
 # Ensure UTF-8 stdout/stderr on Windows piped subprocesses so Unicode never crashes startup.
 for _stream in (sys.stdout, sys.stderr):
@@ -28,7 +28,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
-from core.database import get_paper, init_db, list_papers
+from core.database import (
+    get_chunks_for_paper,
+    get_paper,
+    init_db,
+    list_papers,
+    resolve_paper_ref,
+)
 from core.ingest import ingest_pdf, remove_paper as _remove_paper
 from core.retrieval import get_context_for_query, search
 
@@ -78,7 +84,11 @@ threading.Thread(target=_heartbeat_monitor, daemon=True).start()
 @app.get("/api/health")
 def api_health():
     from core.collections import get_active_name
-    return {"ok": True, "collection": get_active_name()}
+    return {
+        "ok": True,
+        "collection": get_active_name(),
+        "capabilities": ["search_filters_v1", "paper_chunks_v1"],
+    }
 
 
 @app.get("/api/heartbeat")
@@ -93,6 +103,21 @@ def api_heartbeat():
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 8
+    paper_ids: Optional[list[str]] = None
+    citekeys: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+    author: Optional[str] = None
+    year: Optional[int] = None
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
+    mode: Literal["hybrid", "semantic", "bm25"] = "hybrid"
+    semantic_weight: Optional[float] = None
+    bm25_weight: Optional[float] = None
+    rrf_k: Optional[int] = None
+    recall_k: Optional[int] = None
+    rerank: bool = False
+    reranker_model: Optional[str] = None
+    max_chunks_per_paper: int = 5
 
 
 class FindSupportRequest(BaseModel):
@@ -101,6 +126,17 @@ class FindSupportRequest(BaseModel):
     recall_k: int = 30
     use_reranker: bool = True
     reranker_model: Optional[str] = None
+    paper_ids: Optional[list[str]] = None
+    citekeys: Optional[list[str]] = None
+    tags: Optional[list[str]] = None
+    author: Optional[str] = None
+    year: Optional[int] = None
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
+    mode: Literal["hybrid", "semantic", "bm25"] = "hybrid"
+    semantic_weight: Optional[float] = None
+    bm25_weight: Optional[float] = None
+    rrf_k: Optional[int] = None
 
 
 class TagUpdateRequest(BaseModel):
@@ -137,10 +173,26 @@ def api_list_papers(tag: str = "", year: int = 0):
 
 @app.get("/api/papers/{paper_id}")
 def api_get_paper(paper_id: str):
-    paper = get_paper(paper_id)
+    paper = resolve_paper_ref(paper_id)
     if not paper:
         raise HTTPException(404, "Paper not found")
     return paper
+
+
+@app.get("/api/papers/{paper_id}/chunks")
+def api_get_paper_chunks(
+    paper_id: str,
+    page_from: Optional[int] = None,
+    page_to: Optional[int] = None,
+):
+    paper = resolve_paper_ref(paper_id)
+    if not paper:
+        raise HTTPException(404, "Paper not found")
+    chunks = get_chunks_for_paper(paper.id, page_from=page_from, page_to=page_to)
+    return {
+        "paper": paper,
+        "chunks": chunks,
+    }
 
 
 @app.delete("/api/papers/{paper_id}")
@@ -319,13 +371,51 @@ def api_patch_settings(body: SettingsPatchRequest):
 
 @app.post("/api/search")
 def api_search(req: SearchRequest):
-    results = search(req.query, top_k=req.top_k)
+    results = search(
+        req.query,
+        top_k=req.top_k,
+        paper_ids=req.paper_ids,
+        citekeys=req.citekeys,
+        tags=req.tags,
+        author=req.author,
+        year=req.year,
+        year_from=req.year_from,
+        year_to=req.year_to,
+        mode=req.mode,
+        semantic_weight=req.semantic_weight,
+        bm25_weight=req.bm25_weight,
+        rrf_k=req.rrf_k,
+        recall_k=req.recall_k,
+        rerank=req.rerank,
+        reranker_model=req.reranker_model,
+        max_chunks_per_paper=req.max_chunks_per_paper,
+    )
     return results
 
 
 @app.post("/api/search/context")
 def api_search_context(req: SearchRequest):
-    return {"context": get_context_for_query(req.query, top_k=req.top_k)}
+    return {
+        "context": get_context_for_query(
+            req.query,
+            top_k=req.top_k,
+            paper_ids=req.paper_ids,
+            citekeys=req.citekeys,
+            tags=req.tags,
+            author=req.author,
+            year=req.year,
+            year_from=req.year_from,
+            year_to=req.year_to,
+            mode=req.mode,
+            semantic_weight=req.semantic_weight,
+            bm25_weight=req.bm25_weight,
+            rrf_k=req.rrf_k,
+            recall_k=req.recall_k,
+            rerank=req.rerank,
+            reranker_model=req.reranker_model,
+            max_chunks_per_paper=req.max_chunks_per_paper,
+        )
+    }
 
 
 @app.post("/api/citations/find-support")
@@ -337,6 +427,17 @@ def api_find_support(req: FindSupportRequest):
         recall_k=req.recall_k,
         use_reranker=req.use_reranker,
         reranker_model=req.reranker_model,
+        paper_ids=req.paper_ids,
+        citekeys=req.citekeys,
+        tags=req.tags,
+        author=req.author,
+        year=req.year,
+        year_from=req.year_from,
+        year_to=req.year_to,
+        mode=req.mode,
+        semantic_weight=req.semantic_weight,
+        bm25_weight=req.bm25_weight,
+        rrf_k=req.rrf_k,
     )
 
 

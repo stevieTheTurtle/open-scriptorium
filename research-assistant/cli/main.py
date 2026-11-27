@@ -65,12 +65,13 @@ def _daemon_call(
     use_daemon: bool = True,
     timeout: float = 60.0,
     fallback_on_404: bool = False,
+    required_capability: Optional[str] = None,
 ) -> tuple[bool, Any]:
     """Try calling the warm local Research Assistant daemon.
 
     Returns (True, parsed_json) on success, (False, None) if the daemon is unreachable
-    so the caller can fall back seamlessly to local Python execution. Raises typer.Exit(1)
-    on explicit 4xx/5xx application errors returned by the daemon.
+    (or lacks ``required_capability``) so the caller can fall back seamlessly to local
+    Python execution. Raises typer.Exit(1) on explicit 4xx/5xx application errors.
     """
     if not use_daemon:
         return False, None
@@ -83,6 +84,12 @@ def _daemon_call(
         with urllib.request.urlopen(f"{base}/api/health", timeout=0.4) as resp:
             if resp.status >= 400:
                 return False, None
+            if required_capability:
+                health_raw = resp.read().decode("utf-8", errors="replace")
+                health = json.loads(health_raw) if health_raw else {}
+                caps = health.get("capabilities") or []
+                if required_capability not in caps:
+                    return False, None
     except Exception:
         return False, None
 
@@ -119,12 +126,44 @@ def _ensure_local_db() -> None:
     init_db()
 
 
+def _split_csv_values(values: Optional[list[str]]) -> list[str]:
+    out: list[str] = []
+    for raw in values or []:
+        for part in raw.split(","):
+            cleaned = part.strip()
+            if cleaned:
+                out.append(cleaned)
+    return out
+
+
+def _validate_mode(mode: str) -> str:
+    norm = (mode or "hybrid").strip().lower()
+    if norm not in ("hybrid", "semantic", "bm25"):
+        print(f"Error: invalid --mode '{mode}'. Choose from: hybrid, semantic, bm25.", file=sys.stderr)
+        raise typer.Exit(1)
+    return norm
+
+
 # ─── search ──────────────────────────────────────────────────────────────────
 
 @app.command(name="search")
 def search_cmd(
     query: str = typer.Argument(..., help="Search query over the local knowledge base"),
     top_k: int = typer.Option(5, "--top-k", "-k", help="Maximum papers to return"),
+    paper_id: Optional[list[str]] = typer.Option(None, "--paper-id", help="Filter to paper ID(s) or prefixes (repeatable or comma-separated)"),
+    citekey: Optional[list[str]] = typer.Option(None, "--citekey", "--key", help="Filter to Zotero @citekey(s) (repeatable or comma-separated)"),
+    tag: Optional[list[str]] = typer.Option(None, "--tag", "-t", help="Filter by tag or Zotero folder coll:<path> (repeatable; AND across tags)"),
+    author: Optional[str] = typer.Option(None, "--author", "-a", help="Filter by author substring (case-insensitive)"),
+    year: Optional[int] = typer.Option(None, "--year", "-y", help="Filter by exact publication year"),
+    year_from: Optional[int] = typer.Option(None, "--year-from", help="Filter by minimum publication year (inclusive)"),
+    year_to: Optional[int] = typer.Option(None, "--year-to", help="Filter by maximum publication year (inclusive)"),
+    mode: str = typer.Option("hybrid", "--mode", "-m", help="Retrieval mode: hybrid, semantic, or bm25"),
+    semantic_weight: Optional[float] = typer.Option(None, "--semantic-weight", help="Override RRF semantic weight (default from config)"),
+    bm25_weight: Optional[float] = typer.Option(None, "--bm25-weight", help="Override RRF BM25 weight (default from config)"),
+    rrf_k: Optional[int] = typer.Option(None, "--rrf-k", help="Override RRF rank constant k (default 60)"),
+    recall_k: Optional[int] = typer.Option(None, "--recall-k", help="Candidate chunks recalled per channel before fusion/reranking"),
+    rerank: bool = typer.Option(False, "--rerank", help="Rerank candidate chunks with local CrossEncoder for higher precision"),
+    reranker_model: Optional[str] = typer.Option(None, "--reranker-model", help="Optional CrossEncoder model override (used with --rerank)"),
     compact: bool = typer.Option(False, "--compact", "-c", help="Ultra-compact output (minimal tokens)"),
     context: bool = typer.Option(False, "--context", help="Full [Ref N] + REFERENCES BLOCK format for Q&A"),
     max_chunks: int = typer.Option(3, "--max-chunks", help="Max excerpts per paper"),
@@ -132,24 +171,124 @@ def search_cmd(
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
     local: bool = typer.Option(False, "--local", help="Bypass warm daemon and run directly in-process"),
 ):
-    """Search the local paper library (hybrid semantic + BM25)."""
+    """Search the local paper library (hybrid semantic + BM25, with pushdown filters and optional reranking)."""
+    eff_mode = _validate_mode(mode)
+    paper_ids_list = _split_csv_values(paper_id) or None
+    citekeys_list = _split_csv_values(citekey) or None
+    tags_list = _split_csv_values(tag) or None
+    clean_author = author.strip() if author and author.strip() else None
+
+    chunk_limit = 2 if compact and max_chunks == 3 else max_chunks
+    char_limit = 350 if compact and max_chars == 600 else max_chars
+
+    uses_advanced = any([
+        paper_ids_list,
+        citekeys_list,
+        tags_list,
+        clean_author,
+        year is not None,
+        year_from is not None,
+        year_to is not None,
+        eff_mode != "hybrid",
+        semantic_weight is not None,
+        bm25_weight is not None,
+        rrf_k is not None,
+        recall_k is not None,
+        rerank,
+        reranker_model,
+    ])
+    req_cap = "search_filters_v1" if uses_advanced else None
+
+    payload: dict[str, Any] = {
+        "query": query,
+        "top_k": top_k,
+        "paper_ids": paper_ids_list,
+        "citekeys": citekeys_list,
+        "tags": tags_list,
+        "author": clean_author,
+        "year": year,
+        "year_from": year_from,
+        "year_to": year_to,
+        "mode": eff_mode,
+        "semantic_weight": semantic_weight,
+        "bm25_weight": bm25_weight,
+        "rrf_k": rrf_k,
+        "recall_k": recall_k,
+        "rerank": rerank,
+        "reranker_model": reranker_model or None,
+        "max_chunks_per_paper": max(chunk_limit, 4 if context else chunk_limit),
+    }
+
     if context and not json_out:
-        ok, data = _daemon_call("POST", "/api/search/context", {"query": query, "top_k": top_k}, use_daemon=not local)
+        ok, data = _daemon_call(
+            "POST",
+            "/api/search/context",
+            payload,
+            use_daemon=not local,
+            timeout=120.0 if rerank else 60.0,
+            required_capability=req_cap,
+        )
         if ok:
             print(data.get("context", ""))
             return
         _ensure_local_db()
         from core.retrieval import get_context_for_query
-        print(get_context_for_query(query, top_k=top_k))
+        print(get_context_for_query(
+            query,
+            top_k=top_k,
+            paper_ids=paper_ids_list,
+            citekeys=citekeys_list,
+            tags=tags_list,
+            author=clean_author,
+            year=year,
+            year_from=year_from,
+            year_to=year_to,
+            mode=eff_mode,  # type: ignore[arg-type]
+            semantic_weight=semantic_weight,
+            bm25_weight=bm25_weight,
+            rrf_k=rrf_k,
+            recall_k=recall_k,
+            rerank=rerank,
+            reranker_model=reranker_model or None,
+            max_chunks_per_paper=max(chunk_limit, 4),
+        ))
         return
 
-    ok, raw_results = _daemon_call("POST", "/api/search", {"query": query, "top_k": top_k}, use_daemon=not local)
+    ok, raw_results = _daemon_call(
+        "POST",
+        "/api/search",
+        payload,
+        use_daemon=not local,
+        timeout=120.0 if rerank else 60.0,
+        required_capability=req_cap,
+    )
     if ok:
         results = raw_results
     else:
         _ensure_local_db()
         from core.retrieval import search
-        results = [r.model_dump(mode="json") for r in search(query, top_k=top_k)]
+        results = [
+            r.model_dump(mode="json")
+            for r in search(
+                query,
+                top_k=top_k,
+                paper_ids=paper_ids_list,
+                citekeys=citekeys_list,
+                tags=tags_list,
+                author=clean_author,
+                year=year,
+                year_from=year_from,
+                year_to=year_to,
+                mode=eff_mode,  # type: ignore[arg-type]
+                semantic_weight=semantic_weight,
+                bm25_weight=bm25_weight,
+                rrf_k=rrf_k,
+                recall_k=recall_k,
+                rerank=rerank,
+                reranker_model=reranker_model or None,
+                max_chunks_per_paper=max(chunk_limit, 5),
+            )
+        ]
 
     if not results:
         print("[]" if json_out else "No results.")
@@ -159,18 +298,15 @@ def search_cmd(
         print(json.dumps(results, indent=2, ensure_ascii=False))
         return
 
-    chunk_limit = 2 if compact and max_chunks == 3 else max_chunks
-    char_limit = 350 if compact and max_chars == 600 else max_chars
-
     for i, r in enumerate(results, 1):
         p = r["paper"]
         tags = p.get("tags") or []
-        citekey = _citekey_from_tags(tags)
-        year = p.get("year") or "n.d."
+        citekey_tag = _citekey_from_tags(tags)
+        pub_year = p.get("year") or "n.d."
         authors = p.get("authors") or []
         authors_str = ", ".join(authors[:3]) + (" et al." if len(authors) > 3 else "")
-        key_part = f" {citekey} |" if citekey else ""
-        print(f"[{i}]{key_part} {p['title']} ({year})")
+        key_part = f" {citekey_tag} |" if citekey_tag else ""
+        print(f"[{i}]{key_part} {p['title']} ({pub_year})")
         if not compact:
             tags_str = f" | Tags: {', '.join(tags)}" if tags else ""
             print(f"    Authors: {authors_str or 'Unknown'} | ID: {p['id']}{tags_str}")
@@ -191,18 +327,61 @@ def find_support_cmd(
     claim: str = typer.Argument(..., help="Claim or selected LaTeX/PDF text to find supporting citations for"),
     top_k: int = typer.Option(8, "--top-k", "-k", help="Maximum candidate papers to return"),
     recall_k: int = typer.Option(30, "--recall-k", help="Hybrid recall pool size before reranking"),
+    paper_id: Optional[list[str]] = typer.Option(None, "--paper-id", help="Filter to paper ID(s) or prefixes"),
+    citekey: Optional[list[str]] = typer.Option(None, "--citekey", "--key", help="Filter to Zotero @citekey(s)"),
+    tag: Optional[list[str]] = typer.Option(None, "--tag", "-t", help="Filter by tag or Zotero folder coll:<path>"),
+    author: Optional[str] = typer.Option(None, "--author", "-a", help="Filter by author substring"),
+    year: Optional[int] = typer.Option(None, "--year", "-y", help="Filter by exact publication year"),
+    year_from: Optional[int] = typer.Option(None, "--year-from", help="Filter by minimum publication year (inclusive)"),
+    year_to: Optional[int] = typer.Option(None, "--year-to", help="Filter by maximum publication year (inclusive)"),
+    mode: str = typer.Option("hybrid", "--mode", "-m", help="Recall mode: hybrid, semantic, or bm25"),
+    semantic_weight: Optional[float] = typer.Option(None, "--semantic-weight", help="Override RRF semantic weight"),
+    bm25_weight: Optional[float] = typer.Option(None, "--bm25-weight", help="Override RRF BM25 weight"),
+    rrf_k: Optional[int] = typer.Option(None, "--rrf-k", help="Override RRF rank constant k"),
     no_rerank: bool = typer.Option(False, "--no-rerank", help="Skip local CrossEncoder reranker"),
     reranker_model: str = typer.Option("", "--model", help="Optional CrossEncoder model override"),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
     local: bool = typer.Option(False, "--local", help="Bypass warm daemon and run directly in-process"),
 ):
     """Find supporting papers and verbatim quotes for a claim (hybrid recall + local reranker)."""
+    eff_mode = _validate_mode(mode)
+    paper_ids_list = _split_csv_values(paper_id) or None
+    citekeys_list = _split_csv_values(citekey) or None
+    tags_list = _split_csv_values(tag) or None
+    clean_author = author.strip() if author and author.strip() else None
+
+    uses_advanced = any([
+        paper_ids_list,
+        citekeys_list,
+        tags_list,
+        clean_author,
+        year is not None,
+        year_from is not None,
+        year_to is not None,
+        eff_mode != "hybrid",
+        semantic_weight is not None,
+        bm25_weight is not None,
+        rrf_k is not None,
+    ])
+    req_cap = "search_filters_v1" if uses_advanced else None
+
     payload = {
         "claim": claim,
         "top_k": top_k,
         "recall_k": recall_k,
         "use_reranker": not no_rerank,
         "reranker_model": reranker_model or None,
+        "paper_ids": paper_ids_list,
+        "citekeys": citekeys_list,
+        "tags": tags_list,
+        "author": clean_author,
+        "year": year,
+        "year_from": year_from,
+        "year_to": year_to,
+        "mode": eff_mode,
+        "semantic_weight": semantic_weight,
+        "bm25_weight": bm25_weight,
+        "rrf_k": rrf_k,
     }
     ok, data = _daemon_call(
         "POST",
@@ -211,6 +390,7 @@ def find_support_cmd(
         use_daemon=not local,
         timeout=120.0,
         fallback_on_404=True,
+        required_capability=req_cap,
     )
     if not ok:
         _ensure_local_db()
@@ -221,6 +401,17 @@ def find_support_cmd(
             recall_k=recall_k,
             use_reranker=not no_rerank,
             reranker_model=reranker_model or None,
+            paper_ids=paper_ids_list,
+            citekeys=citekeys_list,
+            tags=tags_list,
+            author=clean_author,
+            year=year,
+            year_from=year_from,
+            year_to=year_to,
+            mode=eff_mode,
+            semantic_weight=semantic_weight,
+            bm25_weight=bm25_weight,
+            rrf_k=rrf_k,
         )
 
     if json_out:
@@ -268,22 +459,88 @@ def _render_paper_detail(paper: dict[str, Any], json_out: bool) -> None:
 
 @app.command(name="detail")
 def detail_cmd(
-    paper_id: str = typer.Argument(..., help="Paper ID to inspect"),
+    paper_id: str = typer.Argument(..., help="Paper ID, 6+ char ID prefix, or @citekey to inspect"),
     json_out: bool = typer.Option(False, "--json", help="Output JSON"),
     local: bool = typer.Option(False, "--local", help="Bypass warm daemon"),
 ):
-    """Show full metadata for a paper by ID."""
-    ok, data = _daemon_call("GET", f"/api/papers/{urllib.parse.quote(paper_id)}", use_daemon=not local)
+    """Show full metadata for a paper by ID, prefix, or @citekey."""
+    ok, data = _daemon_call(
+        "GET",
+        f"/api/papers/{urllib.parse.quote(paper_id)}",
+        use_daemon=not local,
+        fallback_on_404=True,
+    )
     if ok:
         _render_paper_detail(data, json_out)
         return
     _ensure_local_db()
-    from core.database import get_paper
-    paper = get_paper(paper_id)
+    from core.database import resolve_paper_ref
+    paper = resolve_paper_ref(paper_id)
     if paper is None:
         print(f"Not found: {paper_id}", file=sys.stderr)
         raise typer.Exit(1)
     _render_paper_detail(paper.model_dump(mode="json"), json_out)
+
+
+@app.command(name="chunks")
+def chunks_cmd(
+    paper_ref: str = typer.Argument(..., help="Paper ID, 6+ char ID prefix, or @citekey"),
+    page: Optional[int] = typer.Option(None, "--page", "-p", help="Single page number to read"),
+    page_from: Optional[int] = typer.Option(None, "--page-from", help="Start page number (inclusive)"),
+    page_to: Optional[int] = typer.Option(None, "--page-to", help="End page number (inclusive)"),
+    max_chars: int = typer.Option(0, "--max-chars", help="Max characters per chunk (0 = full verbatim text)"),
+    json_out: bool = typer.Option(False, "--json", help="Output JSON"),
+    local: bool = typer.Option(False, "--local", help="Bypass warm daemon"),
+):
+    """Read verbatim indexed chunks/pages for a specific paper (great for expanding quotes)."""
+    p_from = page if page is not None else page_from
+    p_to = page if page is not None else page_to
+
+    qs_params: dict[str, Any] = {}
+    if p_from is not None:
+        qs_params["page_from"] = p_from
+    if p_to is not None:
+        qs_params["page_to"] = p_to
+    qs = f"?{urllib.parse.urlencode(qs_params)}" if qs_params else ""
+
+    ok, data = _daemon_call(
+        "GET",
+        f"/api/papers/{urllib.parse.quote(paper_ref)}/chunks{qs}",
+        use_daemon=not local,
+        fallback_on_404=True,
+        required_capability="paper_chunks_v1",
+    )
+    if not ok:
+        _ensure_local_db()
+        from core.database import get_chunks_for_paper, resolve_paper_ref
+        paper = resolve_paper_ref(paper_ref)
+        if paper is None:
+            print(f"Not found: {paper_ref}", file=sys.stderr)
+            raise typer.Exit(1)
+        chunks = get_chunks_for_paper(paper.id, page_from=p_from, page_to=p_to)
+        data = {
+            "paper": paper.model_dump(mode="json"),
+            "chunks": [c.model_dump(mode="json") for c in chunks],
+        }
+
+    if json_out:
+        print(json.dumps(data, indent=2, ensure_ascii=False))
+        return
+
+    p = data["paper"]
+    chunks = data.get("chunks") or []
+    citekey_tag = _citekey_from_tags(p.get("tags") or [])
+    key_part = f"{citekey_tag} | " if citekey_tag else ""
+    year = p.get("year") or "n.d."
+    print(f"{key_part}{p.get('title', '')} ({year}) | ID: {p.get('id', '')}")
+    if not chunks:
+        print("No chunks found for the requested page range.")
+        return
+    for c in chunks:
+        text = re.sub(r"\s+", " ", c.get("content", "")).strip()
+        if max_chars > 0 and len(text) > max_chars:
+            text = text[:max_chars].rstrip() + "..."
+        print(f"\n[p.{c.get('page_number', 0)} | chunk #{c.get('chunk_index', 0)}] {text}")
 
 
 @app.command(name="show")
